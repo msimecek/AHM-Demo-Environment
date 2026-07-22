@@ -11,11 +11,13 @@ param(
     [string] $DeploymentVersion = "v$((Get-Date).ToString('yyyy.M.d'))",
     [string] $DeploymentRollout = (Get-Date).ToString('yyyyMMddHHmmss'),
     [string] $DeploymentAnnotationDescription,
+    [switch] $EnsurePackageUploadAccess,
     [switch] $SkipHealthModelAnnotation,
     [switch] $SkipBuild
 )
 
 $ErrorActionPreference = 'Stop'
+$packageUploadRoleName = 'Storage Blob Data Contributor'
 
 function Get-RequiredValue {
     param(
@@ -61,6 +63,112 @@ function Get-StorageAccountName {
     }
 
     return $matchingAccounts[0].name
+}
+
+function Get-StorageAccountResourceId {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ResourceGroupName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $StorageAccountName
+    )
+
+    $storageAccountId = az storage account show --resource-group $ResourceGroupName --name $StorageAccountName --query id --output tsv
+    Assert-NativeCommandSucceeded 'Storage account resource ID lookup'
+    return Get-RequiredValue $storageAccountId 'storage account resource ID'
+}
+
+function Test-PackageUploadAccess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $StorageAccountName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $ContainerName
+    )
+
+    $null = az storage container exists `
+        --account-name $StorageAccountName `
+        --name $ContainerName `
+        --auth-mode login `
+        --query exists `
+        --output tsv 2>$null
+
+    return $LASTEXITCODE -eq 0
+}
+
+function Grant-PackageUploadRoleToSignedInUser {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $StorageAccountId
+    )
+
+    $account = az account show --output json | ConvertFrom-Json
+    Assert-NativeCommandSucceeded 'Azure account lookup'
+
+    if ($account.user.type -ine 'user') {
+        throw "Automatic package upload role grants require an Azure CLI user sign-in. Current sign-in type is '$($account.user.type)'. Assign '$packageUploadRoleName' on '$StorageAccountId' to the deployment identity, or sign in as a user with role assignment permissions."
+    }
+
+    $userObjectId = az ad signed-in-user show --query id --output tsv
+    Assert-NativeCommandSucceeded 'Signed-in user lookup'
+    $userObjectId = Get-RequiredValue $userObjectId 'signed-in user object ID'
+
+    Write-Host "Granting '$packageUploadRoleName' on $StorageAccountId to signed-in user $userObjectId..."
+    az role assignment create `
+        --assignee-object-id $userObjectId `
+        --assignee-principal-type User `
+        --role $packageUploadRoleName `
+        --scope $StorageAccountId `
+        --output none
+    Assert-NativeCommandSucceeded "'$packageUploadRoleName' role assignment"
+}
+
+function Assert-PackageUploadAccess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ResourceGroupName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $StorageAccountName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $ContainerName,
+
+        [switch] $GrantIfMissing
+    )
+
+    Write-Host "Checking package upload access for $StorageAccountName..."
+    az account get-access-token --resource https://storage.azure.com/ --output none | Out-Null
+    Assert-NativeCommandSucceeded 'Azure Storage access token acquisition'
+
+    if (Test-PackageUploadAccess -StorageAccountName $StorageAccountName -ContainerName $ContainerName) {
+        Write-Host "Package upload access confirmed."
+        return
+    }
+
+    $storageAccountId = Get-StorageAccountResourceId -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName
+
+    if (-not $GrantIfMissing) {
+        throw "Current Azure CLI identity cannot access package containers in storage account '$StorageAccountName'. Assign '$packageUploadRoleName' on '$storageAccountId', or rerun with -EnsurePackageUploadAccess if this identity can create role assignments."
+    }
+
+    Grant-PackageUploadRoleToSignedInUser -StorageAccountId $storageAccountId
+
+    foreach ($attempt in 1..6) {
+        Write-Host "Waiting for package upload access to propagate (attempt $attempt of 6)..."
+        Start-Sleep -Seconds 20
+        az account get-access-token --resource https://storage.azure.com/ --output none | Out-Null
+        Assert-NativeCommandSucceeded 'Azure Storage access token acquisition'
+
+        if (Test-PackageUploadAccess -StorageAccountName $StorageAccountName -ContainerName $ContainerName) {
+            Write-Host "Package upload access confirmed."
+            return
+        }
+    }
+
+    throw "Assigned '$packageUploadRoleName' on '$storageAccountId', but Azure Storage data-plane access is not available yet. Wait a minute and rerun the deployment."
 }
 
 function Get-ManagementAccessToken {
@@ -228,6 +336,12 @@ $apps = @(
     }
 )
 
+Assert-PackageUploadAccess `
+    -ResourceGroupName $ResourceGroupName `
+    -StorageAccountName $StorageAccountName `
+    -ContainerName $apps[0].Container `
+    -GrantIfMissing:$EnsurePackageUploadAccess
+
 New-Item -ItemType Directory -Force $ArtifactsPath | Out-Null
 
 if (-not $SkipBuild) {
@@ -252,9 +366,6 @@ else {
         $app.ZipPath = $zipPath
     }
 }
-
-az account get-access-token --resource https://storage.azure.com/ --output none | Out-Null
-Assert-NativeCommandSucceeded 'Azure Storage access token acquisition'
 
 $managementAccessToken = $null
 $healthModelAnnotationMap = $null

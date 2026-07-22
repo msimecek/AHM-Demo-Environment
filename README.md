@@ -38,11 +38,7 @@ Grant package upload access if needed:
 
 ```powershell
 $resourceGroupName = "<resource-group-name>"
-$storageAccountName = az storage account list --resource-group $resourceGroupName --query "[0].name" --output tsv
-$storageAccountId = az storage account show --resource-group $resourceGroupName --name $storageAccountName --query id --output tsv
-$userObjectId = az ad signed-in-user show --query id --output tsv
-az role assignment create --assignee-object-id $userObjectId --assignee-principal-type User --role "Storage Blob Data Contributor" --scope $storageAccountId
-az account get-access-token --resource https://storage.azure.com/ --output none
+.\scripts\Deploy-FunctionPackages.ps1 -ResourceGroupName $resourceGroupName -EnsurePackageUploadAccess
 ```
 
 ### Deploy Function Apps
@@ -69,6 +65,8 @@ To reuse already-built packages from `%TEMP%\expenseflow-function-packages`:
 ```
 
 The deploy script discovers the storage account and Function App names from the resource group, uploads each package as `released-package.zip`, restarts each app, syncs triggers, and prints the discovered functions.
+
+If package upload access is missing, pass `-EnsurePackageUploadAccess` to have the script assign the required storage data role to the signed-in Azure CLI user before uploading packages. The signed-in user must have role assignment permissions on the storage account.
 
 After each Function App package deployment, the deploy script reads `.deployment\health-model-annotations.json` and uses the current Azure CLI user's management-plane bearer token to add a Health Model `Deployment` data annotation to matching Function App entities. Override the annotation values with `-DeploymentVersion`, `-DeploymentRollout`, and optional `-DeploymentAnnotationDescription`; use `-HealthModelAnnotationMapPath` to read a different generated map.
 
