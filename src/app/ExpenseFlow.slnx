@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ExpenseFlow.Bff/ExpenseFlow.Bff.csproj" />
+  <Project Path="ExpenseFlow.Ocr/ExpenseFlow.Ocr.csproj" />
+  <Project Path="ExpenseFlow.Shared/ExpenseFlow.Shared.csproj" />
+  <Project Path="ExpenseFlow.Worker/ExpenseFlow.Worker.csproj" />
+</Solution>

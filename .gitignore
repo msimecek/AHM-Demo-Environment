@@ -1,0 +1,56 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Local environment/config
+.env
+.env.*
+*.local
+*.user
+*.suo
+*.rsuser
+
+# Logs
+*.log
+logs/
+
+# Azure/Bicep
+src/infra/main.subscription.bicepparam
+*.parameters.local.json
+*.bicepparam.local
+infra/**/*.json
+!infra/**/*.template.json
+src/infra/**/*.json
+!src/infra/**/*.template.json
+
+# .NET
+bin/
+obj/
+TestResults/
+coverage/
+*.nupkg
+
+# Node/TypeScript
+node_modules/
+dist/
+build/
+out/
+.next/
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Azure Functions local
+local.settings.json
+
+# Package/cache/temp
+.tmp/
+temp/
+.cache/
+.deployment/

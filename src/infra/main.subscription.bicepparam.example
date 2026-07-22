@@ -1,0 +1,18 @@
+using 'main.subscription.bicep'
+
+param workloadName = 'expenseflow'
+param deployments = [
+  {
+    name: 'primary'
+    resourceGroupName: '<resource-group-name>'
+    location: '<azure-region>'
+    environmentName: 'demo'
+  }
+  // Add more deployment entries for additional regions.
+]
+// Add public IP ranges here only when local deployment access is required.
+param deploymentClientIpRanges = []
+
+param restrictNetworkAccess = true
+param updateOcrFunctionKeySecret = true
+param allowPublicMonitorQueryAccess = true
