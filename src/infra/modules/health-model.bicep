@@ -208,8 +208,8 @@ resource entityPrimaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-
   name: '09a5fd7d-a108-4b2d-a377-6d06266e18fd'
   properties: {
     canvasPosition: {
-      x: -310
-      y: 770
+      x: -440
+      y: 940
     }
     displayName: 'Primary Storage'
     icon: {
@@ -264,8 +264,8 @@ resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@202
   name: 'f2a40f5e-52b2-48a2-96ce-33f4d884825d'
   properties: {
     canvasPosition: {
-      x: -310
-      y: 920
+      x: -210
+      y: 940
     }
     displayName: 'Secondary Storage'
     icon: {
@@ -628,6 +628,36 @@ resource entityDataLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01
     }
     impact: 'Standard'
     tags: {}
+  }
+  dependsOn: [
+    authenticationSettingSystemAssigned
+    signalDefinitionAspHttpQueueLength
+  ]
+}
+
+resource entityStorageAccounts 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+  parent: healthModel
+  name: '063cfc66-b335-41b2-a983-27d31c1978c1'
+  properties: {
+    canvasPosition: {
+      x: -310
+      y: 770
+    }
+    displayName: 'Storage accounts'
+    icon: {
+      iconName: 'Generic'
+    }
+    impact: 'Standard'
+    tags: {}
+    signalGroups: {
+      dependencies: {
+        aggregationType: 'MinHealthy'
+        degradedThreshold: 1
+        unhealthyThreshold: 0
+        unit: 'Absolute'
+        ignoreUnknown: false
+      }
+    }
   }
   dependsOn: [
     authenticationSettingSystemAssigned
@@ -1393,15 +1423,29 @@ resource relationshipSubmitExpensesToProcessingLayer 'Microsoft.CloudHealth/heal
   ]
 }
 
-resource relationshipDataLayerToStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipDataLayerToStorageAccounts 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
-  name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-09a5fd7d-a108-4b2d-a377-6d06266e18fd'
+  name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-063cfc66-b335-41b2-a983-27d31c1978c1'
   properties: {
-    childEntityName: '09a5fd7d-a108-4b2d-a377-6d06266e18fd'
+    childEntityName: '063cfc66-b335-41b2-a983-27d31c1978c1'
     parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
   }
   dependsOn: [
+    entityStorageAccounts
+    entityDataLayer
+  ]
+}
+
+resource relationshipStorageAccountsToPrimaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+  parent: healthModel
+  name: '063cfc66-b335-41b2-a983-27d31c1978c1-09a5fd7d-a108-4b2d-a377-6d06266e18fd'
+  properties: {
+    childEntityName: '09a5fd7d-a108-4b2d-a377-6d06266e18fd'
+    parentEntityName: '063cfc66-b335-41b2-a983-27d31c1978c1'
+  }
+  dependsOn: [
     entityPrimaryStorage
+    entityStorageAccounts
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1421,15 +1465,16 @@ resource relationshipDataLayerToStorage 'Microsoft.CloudHealth/healthmodels/rela
   ]
 }
 
-resource relationshipDataLayerToSecondaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipStorageAccountsToSecondaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
-  name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-f2a40f5e-52b2-48a2-96ce-33f4d884825d'
+  name: '063cfc66-b335-41b2-a983-27d31c1978c1-f2a40f5e-52b2-48a2-96ce-33f4d884825d'
   properties: {
     childEntityName: 'f2a40f5e-52b2-48a2-96ce-33f4d884825d'
-    parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
+    parentEntityName: '063cfc66-b335-41b2-a983-27d31c1978c1'
   }
   dependsOn: [
     entitySecondaryStorage
+    entityStorageAccounts
     entityWorker
     entityBffPlan
     entityApiLayer
