@@ -65,6 +65,7 @@ var cosmosSqlDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
 var monitoringReaderRoleId = '43d0d8ad-25c7-4714-9337-8ba259a9fe05'
+var readerRoleId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 var logAnalyticsReaderRoleId = '73c42c96-874c-492b-b04d-ab87d138a893'
 
 var functionHostStorageSettings = [
@@ -931,6 +932,15 @@ resource healthModelMonitoringReaderRole 'Microsoft.Authorization/roleAssignment
   name: guid(resourceGroup().id, healthModelName, monitoringReaderRoleId)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringReaderRoleId)
+    principalId: healthModel.outputs.healthModelPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource healthModelReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, healthModelName, readerRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', readerRoleId)
     principalId: healthModel.outputs.healthModelPrincipalId
     principalType: 'ServicePrincipal'
   }
