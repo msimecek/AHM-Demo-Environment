@@ -12,6 +12,9 @@ param tags object = {}
 @description('Storage account resource ID.')
 param storageAccountResourceId string
 
+@description('Secondary storage account resource ID.')
+param secondaryStorageAccountResourceId string
+
 @description('Worker Function App resource ID.')
 param workerFunctionResourceId string
 
@@ -198,6 +201,124 @@ resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
             metricName: 'Availability'
             metricNamespace: 'microsoft.storage/storageaccounts'
             name: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
+            refreshInterval: 'PT1M'
+            signalKind: 'AzureResourceMetric'
+            timeGrain: 'PT5M'
+          }
+        ]
+        resourceHealth: {
+          enabled: 'Enabled'
+        }
+      }
+    }
+    tags: {}
+  }
+  dependsOn: [
+    authenticationSettingSystemAssigned
+    signalDefinitionAspHttpQueueLength
+  ]
+}
+
+resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+  parent: healthModel
+  name: 'f2a40f5e-52b2-48a2-96ce-33f4d884825d'
+  properties: {
+    canvasPosition: {
+      x: -310
+      y: 920
+    }
+    displayName: 'Secondary Storage'
+    icon: {
+      iconName: 'Resource'
+    }
+    impact: 'Standard'
+    signalGroups: {
+      azureResource: {
+        authenticationSetting: 'systemassigned'
+        azureResourceId: secondaryStorageAccountResourceId
+        signals: [
+          {
+            aggregationType: 'Total'
+            dataUnit: 'Count'
+            dimensionFilter: 'ResponseType eq \'ClientOtherError\''
+            displayName: 'Client/auth errors'
+            evaluationRules: {
+              degradedRule: {
+                operator: 'GreaterThan'
+                threshold: 5
+              }
+              unhealthyRule: {
+                operator: 'GreaterThan'
+                threshold: 25
+              }
+            }
+            metricName: 'Transactions'
+            metricNamespace: 'microsoft.storage/storageaccounts'
+            name: 'c4f0ba3e-4247-469a-942e-8836aeac13ad'
+            refreshInterval: 'PT1M'
+            signalKind: 'AzureResourceMetric'
+            timeGrain: 'PT5M'
+          }
+          {
+            aggregationType: 'Total'
+            dataUnit: 'Count'
+            dimensionFilter: 'ResponseType eq \'AuthorizationError\''
+            displayName: 'AuthorizationError Transations'
+            evaluationRules: {
+              degradedRule: {
+                operator: 'GreaterThan'
+                threshold: 0
+              }
+              unhealthyRule: {
+                operator: 'GreaterThan'
+                threshold: 5
+              }
+            }
+            metricName: 'Transactions'
+            metricNamespace: 'microsoft.storage/storageaccounts'
+            name: 'e99c6d50-2f39-4f44-97e4-23010ed2255f'
+            refreshInterval: 'PT1M'
+            signalKind: 'AzureResourceMetric'
+            timeGrain: 'PT5M'
+          }
+          {
+            aggregationType: 'Average'
+            dataUnit: 'MilliSeconds'
+            displayName: 'Success E2E Latency'
+            evaluationRules: {
+              degradedRule: {
+                operator: 'GreaterThan'
+                threshold: 100
+              }
+              unhealthyRule: {
+                operator: 'GreaterThan'
+                threshold: 200
+              }
+            }
+            metricName: 'SuccessE2ELatency'
+            metricNamespace: 'microsoft.storage/storageaccounts'
+            name: 'dd8516cd-fc93-4818-a43d-477a109dbf3e'
+            refreshInterval: 'PT1M'
+            signalKind: 'AzureResourceMetric'
+            timeGrain: 'PT5M'
+          }
+          {
+            aggregationType: 'Minimum'
+            dataUnit: 'Percent'
+            displayName: 'Availability'
+            evaluationRules: {
+              degradedRule: {
+                operator: 'LessThan'
+                threshold: 95
+              }
+              unhealthyRule: {
+                operator: 'LessThan'
+                threshold: 90
+              }
+            }
+            metricName: 'Availability'
+            metricNamespace: 'microsoft.storage/storageaccounts'
+            name: 'e7ea4276-8d9e-4408-b8f3-460cfb4ad42a'
             refreshInterval: 'PT1M'
             signalKind: 'AzureResourceMetric'
             timeGrain: 'PT5M'
@@ -1303,6 +1424,34 @@ resource relationshipDataLayerToStorage 'Microsoft.CloudHealth/healthmodels/rela
   }
   dependsOn: [
     entityStorage
+    entityWorker
+    entityBffPlan
+    entityApiLayer
+    entityOcr
+    entityManagementLayer
+    entityBff
+    entityDataLayer
+    entityOcrPlan
+    entityWorkerPlan
+    entityProcessingLayer
+    entityKeyVault
+    entityServiceBus
+    entityCosmos
+    entityKeepAliveFunc
+    entitySubmitExpenses
+    entityExpenseFlowApplication
+  ]
+}
+
+resource relationshipDataLayerToSecondaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+  parent: healthModel
+  name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-f2a40f5e-52b2-48a2-96ce-33f4d884825d'
+  properties: {
+    childEntityName: 'f2a40f5e-52b2-48a2-96ce-33f4d884825d'
+    parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
+  }
+  dependsOn: [
+    entitySecondaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer

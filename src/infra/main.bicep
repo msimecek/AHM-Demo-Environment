@@ -601,6 +601,7 @@ module healthModel 'modules/health-model.bicep' = {
     healthModelName: healthModelName
     tags: commonTags
     storageAccountResourceId: storage.outputs.id
+    secondaryStorageAccountResourceId: secondaryStorage.outputs.id
     workerFunctionResourceId: workerFunction.outputs.id
     logAnalyticsWorkspaceResourceId: observability.outputs.workspaceId
     bffPlanResourceId: bffFunctionPlan.id
