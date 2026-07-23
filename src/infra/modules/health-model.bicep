@@ -100,6 +100,108 @@ resource signalDefinitionAspHttpQueueLength 'Microsoft.CloudHealth/healthmodels/
   }
 }
 
+resource signalDefinitionStorageClientAuthErrors 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+  parent: healthModel
+  name: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
+  properties: {
+    aggregationType: 'Total'
+    dataUnit: 'Count'
+    dimensionFilter: 'ResponseType eq \'ClientOtherError\''
+    displayName: 'Client/auth errors'
+    evaluationRules: {
+      degradedRule: {
+        operator: 'GreaterThan'
+        threshold: 5
+      }
+      unhealthyRule: {
+        operator: 'GreaterThan'
+        threshold: 25
+      }
+    }
+    metricName: 'Transactions'
+    metricNamespace: 'microsoft.storage/storageaccounts'
+    refreshInterval: 'PT1M'
+    signalKind: 'AzureResourceMetric'
+    timeGrain: 'PT5M'
+  }
+}
+
+resource signalDefinitionStorageAuthorizationErrors 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+  parent: healthModel
+  name: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
+  properties: {
+    aggregationType: 'Total'
+    dataUnit: 'Count'
+    dimensionFilter: 'ResponseType eq \'AuthorizationError\''
+    displayName: 'AuthorizationError Transations'
+    evaluationRules: {
+      degradedRule: {
+        operator: 'GreaterThan'
+        threshold: 0
+      }
+      unhealthyRule: {
+        operator: 'GreaterThan'
+        threshold: 5
+      }
+    }
+    metricName: 'Transactions'
+    metricNamespace: 'microsoft.storage/storageaccounts'
+    refreshInterval: 'PT1M'
+    signalKind: 'AzureResourceMetric'
+    timeGrain: 'PT5M'
+  }
+}
+
+resource signalDefinitionStorageSuccessE2ELatency 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+  parent: healthModel
+  name: '808a5d79-5c9c-4b28-8217-05019e40acfd'
+  properties: {
+    aggregationType: 'Average'
+    dataUnit: 'MilliSeconds'
+    displayName: 'Success E2E Latency'
+    evaluationRules: {
+      degradedRule: {
+        operator: 'GreaterThan'
+        threshold: 100
+      }
+      unhealthyRule: {
+        operator: 'GreaterThan'
+        threshold: 200
+      }
+    }
+    metricName: 'SuccessE2ELatency'
+    metricNamespace: 'microsoft.storage/storageaccounts'
+    refreshInterval: 'PT1M'
+    signalKind: 'AzureResourceMetric'
+    timeGrain: 'PT5M'
+  }
+}
+
+resource signalDefinitionStorageAvailability 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+  parent: healthModel
+  name: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
+  properties: {
+    aggregationType: 'Minimum'
+    dataUnit: 'Percent'
+    displayName: 'Availability'
+    evaluationRules: {
+      degradedRule: {
+        operator: 'LessThan'
+        threshold: 95
+      }
+      unhealthyRule: {
+        operator: 'LessThan'
+        threshold: 90
+      }
+    }
+    metricName: 'Availability'
+    metricNamespace: 'microsoft.storage/storageaccounts'
+    refreshInterval: 'PT1M'
+    signalKind: 'AzureResourceMetric'
+    timeGrain: 'PT5M'
+  }
+}
+
 
 resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
   parent: healthModel
@@ -120,90 +222,28 @@ resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
         azureResourceId: storageAccountResourceId
         signals: [
           {
-            aggregationType: 'Total'
-            dataUnit: 'Count'
-            dimensionFilter: 'ResponseType eq \'ClientOtherError\''
-            displayName: 'Client/auth errors'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'GreaterThan'
-                threshold: 5
-              }
-              unhealthyRule: {
-                operator: 'GreaterThan'
-                threshold: 25
-              }
-            }
-            metricName: 'Transactions'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
             refreshInterval: 'PT1M'
+            signalDefinitionName: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Total'
-            dataUnit: 'Count'
-            dimensionFilter: 'ResponseType eq \'AuthorizationError\''
-            displayName: 'AuthorizationError Transations'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'GreaterThan'
-                threshold: 0
-              }
-              unhealthyRule: {
-                operator: 'GreaterThan'
-                threshold: 5
-              }
-            }
-            metricName: 'Transactions'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
             refreshInterval: 'PT1M'
+            signalDefinitionName: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Average'
-            dataUnit: 'MilliSeconds'
-            displayName: 'Success E2E Latency'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'GreaterThan'
-                threshold: 100
-              }
-              unhealthyRule: {
-                operator: 'GreaterThan'
-                threshold: 200
-              }
-            }
-            metricName: 'SuccessE2ELatency'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: '808a5d79-5c9c-4b28-8217-05019e40acfd'
             refreshInterval: 'PT1M'
+            signalDefinitionName: '808a5d79-5c9c-4b28-8217-05019e40acfd'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Minimum'
-            dataUnit: 'Percent'
-            displayName: 'Availability'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'LessThan'
-                threshold: 95
-              }
-              unhealthyRule: {
-                operator: 'LessThan'
-                threshold: 90
-              }
-            }
-            metricName: 'Availability'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
             refreshInterval: 'PT1M'
+            signalDefinitionName: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
         ]
         resourceHealth: {
@@ -216,6 +256,10 @@ resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
   dependsOn: [
     authenticationSettingSystemAssigned
     signalDefinitionAspHttpQueueLength
+    signalDefinitionStorageClientAuthErrors
+    signalDefinitionStorageAuthorizationErrors
+    signalDefinitionStorageSuccessE2ELatency
+    signalDefinitionStorageAvailability
   ]
 }
 
@@ -238,90 +282,28 @@ resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@202
         azureResourceId: secondaryStorageAccountResourceId
         signals: [
           {
-            aggregationType: 'Total'
-            dataUnit: 'Count'
-            dimensionFilter: 'ResponseType eq \'ClientOtherError\''
-            displayName: 'Client/auth errors'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'GreaterThan'
-                threshold: 5
-              }
-              unhealthyRule: {
-                operator: 'GreaterThan'
-                threshold: 25
-              }
-            }
-            metricName: 'Transactions'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: 'c4f0ba3e-4247-469a-942e-8836aeac13ad'
             refreshInterval: 'PT1M'
+            signalDefinitionName: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Total'
-            dataUnit: 'Count'
-            dimensionFilter: 'ResponseType eq \'AuthorizationError\''
-            displayName: 'AuthorizationError Transations'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'GreaterThan'
-                threshold: 0
-              }
-              unhealthyRule: {
-                operator: 'GreaterThan'
-                threshold: 5
-              }
-            }
-            metricName: 'Transactions'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: 'e99c6d50-2f39-4f44-97e4-23010ed2255f'
             refreshInterval: 'PT1M'
+            signalDefinitionName: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Average'
-            dataUnit: 'MilliSeconds'
-            displayName: 'Success E2E Latency'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'GreaterThan'
-                threshold: 100
-              }
-              unhealthyRule: {
-                operator: 'GreaterThan'
-                threshold: 200
-              }
-            }
-            metricName: 'SuccessE2ELatency'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: 'dd8516cd-fc93-4818-a43d-477a109dbf3e'
             refreshInterval: 'PT1M'
+            signalDefinitionName: '808a5d79-5c9c-4b28-8217-05019e40acfd'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Minimum'
-            dataUnit: 'Percent'
-            displayName: 'Availability'
-            evaluationRules: {
-              degradedRule: {
-                operator: 'LessThan'
-                threshold: 95
-              }
-              unhealthyRule: {
-                operator: 'LessThan'
-                threshold: 90
-              }
-            }
-            metricName: 'Availability'
-            metricNamespace: 'microsoft.storage/storageaccounts'
             name: 'e7ea4276-8d9e-4408-b8f3-460cfb4ad42a'
             refreshInterval: 'PT1M'
+            signalDefinitionName: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT5M'
           }
         ]
         resourceHealth: {
@@ -334,6 +316,10 @@ resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@202
   dependsOn: [
     authenticationSettingSystemAssigned
     signalDefinitionAspHttpQueueLength
+    signalDefinitionStorageClientAuthErrors
+    signalDefinitionStorageAuthorizationErrors
+    signalDefinitionStorageSuccessE2ELatency
+    signalDefinitionStorageAvailability
   ]
 }
 
