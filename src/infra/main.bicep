@@ -40,6 +40,7 @@ var commonTags = union(tags, {
 })
 
 var storageName = take('${take(compactName, 9)}st${uniqueSuffix}', 24)
+var secondaryStorageName = take('${take(compactName, 8)}st2${uniqueSuffix}', 24)
 var serviceBusNamespaceName = take('sb-${baseName}-${uniqueSuffix}', 50)
 var cosmosAccountName = take('cosmos-${baseName}-${uniqueSuffix}', 44)
 var keyVaultName = take('${take(compactName, 10)}kv${uniqueSuffix}', 24)
@@ -161,6 +162,22 @@ module storage 'modules/storage.bicep' = {
   params: {
     location: location
     name: storageName
+    tags: commonTags
+    receiptContainerName: 'receipts'
+    storageQueueName: 'expense-events'
+    bffPackageContainerName: 'function-packages-bff'
+    workerPackageContainerName: 'function-packages-worker'
+    ocrPackageContainerName: 'function-packages-ocr'
+    restrictNetworkAccess: restrictNetworkAccess
+    deploymentClientIpRanges: deploymentClientIpRanges
+  }
+}
+
+module secondaryStorage 'modules/storage.bicep' = {
+  name: 'secondary-storage'
+  params: {
+    location: location
+    name: secondaryStorageName
     tags: commonTags
     receiptContainerName: 'receipts'
     storageQueueName: 'expense-events'
@@ -415,6 +432,66 @@ module storageFilePrivateEndpoint 'modules/private-endpoint.bicep' = {
   }
 }
 
+module secondaryStorageBlobPrivateEndpoint 'modules/private-endpoint.bicep' = {
+  name: 'pe-secondary-storage-blob'
+  params: {
+    location: location
+    name: take('pe-${secondaryStorage.outputs.name}-blob', 80)
+    subnetId: network.outputs.privateEndpointSubnetId
+    targetResourceId: secondaryStorage.outputs.id
+    groupIds: [
+      'blob'
+    ]
+    privateDnsZoneId: network.outputs.storageBlobPrivateDnsZoneId
+    tags: commonTags
+  }
+}
+
+module secondaryStorageQueuePrivateEndpoint 'modules/private-endpoint.bicep' = {
+  name: 'pe-secondary-storage-queue'
+  params: {
+    location: location
+    name: take('pe-${secondaryStorage.outputs.name}-queue', 80)
+    subnetId: network.outputs.privateEndpointSubnetId
+    targetResourceId: secondaryStorage.outputs.id
+    groupIds: [
+      'queue'
+    ]
+    privateDnsZoneId: network.outputs.storageQueuePrivateDnsZoneId
+    tags: commonTags
+  }
+}
+
+module secondaryStorageTablePrivateEndpoint 'modules/private-endpoint.bicep' = {
+  name: 'pe-secondary-storage-table'
+  params: {
+    location: location
+    name: take('pe-${secondaryStorage.outputs.name}-table', 80)
+    subnetId: network.outputs.privateEndpointSubnetId
+    targetResourceId: secondaryStorage.outputs.id
+    groupIds: [
+      'table'
+    ]
+    privateDnsZoneId: network.outputs.storageTablePrivateDnsZoneId
+    tags: commonTags
+  }
+}
+
+module secondaryStorageFilePrivateEndpoint 'modules/private-endpoint.bicep' = {
+  name: 'pe-secondary-storage-file'
+  params: {
+    location: location
+    name: take('pe-${secondaryStorage.outputs.name}-file', 80)
+    subnetId: network.outputs.privateEndpointSubnetId
+    targetResourceId: secondaryStorage.outputs.id
+    groupIds: [
+      'file'
+    ]
+    privateDnsZoneId: network.outputs.storageFilePrivateDnsZoneId
+    tags: commonTags
+  }
+}
+
 module serviceBusPrivateEndpoint 'modules/private-endpoint.bicep' = {
   name: 'pe-service-bus'
   params: {
@@ -544,6 +621,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
   name: storageName
 }
 
+resource secondaryStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: secondaryStorageName
+}
+
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' existing = {
   name: serviceBusNamespaceName
 }
@@ -666,6 +747,123 @@ resource ocrTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalId: ocrFunction.outputs.principalId
     principalType: 'ServicePrincipal'
   }
+}
+
+resource bffSecondaryBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, bffFunctionAppName, storageBlobDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    principalId: bffFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource bffSecondaryQueueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, bffFunctionAppName, storageQueueDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleId)
+    principalId: bffFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource bffSecondaryTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, bffFunctionAppName, storageTableDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributorRoleId)
+    principalId: bffFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource workerSecondaryBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, workerFunctionAppName, storageBlobDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    principalId: workerFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource workerSecondaryQueueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, workerFunctionAppName, storageQueueDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleId)
+    principalId: workerFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource workerSecondaryTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, workerFunctionAppName, storageTableDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributorRoleId)
+    principalId: workerFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource ocrSecondaryBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, ocrFunctionAppName, storageBlobDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    principalId: ocrFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource ocrSecondaryQueueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, ocrFunctionAppName, storageQueueDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleId)
+    principalId: ocrFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
+}
+
+resource ocrSecondaryTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(secondaryStorageAccount.id, ocrFunctionAppName, storageTableDataContributorRoleId)
+  scope: secondaryStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributorRoleId)
+    principalId: ocrFunction.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    secondaryStorage
+  ]
 }
 
 resource bffServiceBusSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
