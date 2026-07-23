@@ -203,7 +203,7 @@ resource signalDefinitionStorageAvailability 'Microsoft.CloudHealth/healthmodels
 }
 
 
-resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityPrimaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
   parent: healthModel
   name: '09a5fd7d-a108-4b2d-a377-6d06266e18fd'
   properties: {
@@ -211,7 +211,7 @@ resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
       x: -310
       y: 770
     }
-    displayName: 'Storage'
+    displayName: 'Primary Storage'
     icon: {
       iconName: 'Resource'
     }
@@ -223,25 +223,21 @@ resource entityStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
         signals: [
           {
             name: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
-            refreshInterval: 'PT1M'
             signalDefinitionName: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
             signalKind: 'AzureResourceMetric'
           }
           {
             name: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
-            refreshInterval: 'PT1M'
             signalDefinitionName: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
             signalKind: 'AzureResourceMetric'
           }
           {
             name: '808a5d79-5c9c-4b28-8217-05019e40acfd'
-            refreshInterval: 'PT1M'
             signalDefinitionName: '808a5d79-5c9c-4b28-8217-05019e40acfd'
             signalKind: 'AzureResourceMetric'
           }
           {
             name: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
-            refreshInterval: 'PT1M'
             signalDefinitionName: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
             signalKind: 'AzureResourceMetric'
           }
@@ -283,25 +279,21 @@ resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@202
         signals: [
           {
             name: 'c4f0ba3e-4247-469a-942e-8836aeac13ad'
-            refreshInterval: 'PT1M'
             signalDefinitionName: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
             signalKind: 'AzureResourceMetric'
           }
           {
             name: 'e99c6d50-2f39-4f44-97e4-23010ed2255f'
-            refreshInterval: 'PT1M'
             signalDefinitionName: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
             signalKind: 'AzureResourceMetric'
           }
           {
             name: 'dd8516cd-fc93-4818-a43d-477a109dbf3e'
-            refreshInterval: 'PT1M'
             signalDefinitionName: '808a5d79-5c9c-4b28-8217-05019e40acfd'
             signalKind: 'AzureResourceMetric'
           }
           {
             name: 'e7ea4276-8d9e-4408-b8f3-460cfb4ad42a'
-            refreshInterval: 'PT1M'
             signalDefinitionName: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
             signalKind: 'AzureResourceMetric'
           }
@@ -1129,7 +1121,7 @@ resource relationshipWorkerToWorkerPlan 'Microsoft.CloudHealth/healthmodels/rela
     parentEntityName: '0beddc06-19ae-4061-b104-0152c3e5dd8d'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1157,7 +1149,7 @@ resource relationshipApiLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/rel
     parentEntityName: '5ccf2422-068d-49b9-9586-559368a77a46'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1185,7 +1177,7 @@ resource relationshipProcessingLayerToDataLayer 'Microsoft.CloudHealth/healthmod
     parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1213,7 +1205,7 @@ resource relationshipApiLayerToBff 'Microsoft.CloudHealth/healthmodels/relations
     parentEntityName: '5ccf2422-068d-49b9-9586-559368a77a46'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1241,7 +1233,7 @@ resource relationshipOcrToOcrPlan 'Microsoft.CloudHealth/healthmodels/relationsh
     parentEntityName: '63733205-1535-44ff-8962-6bad4e0aa0ee'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1269,7 +1261,7 @@ resource relationshipManagementLayerToKeepAliveFunc 'Microsoft.CloudHealth/healt
     parentEntityName: '72dbfe59-ddc0-4b40-85c4-16ac53262023'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1297,7 +1289,7 @@ resource relationshipBffToBffPlan 'Microsoft.CloudHealth/healthmodels/relationsh
     parentEntityName: '7896a212-ac11-4b4a-a81d-99e3fd666b8d'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1325,7 +1317,7 @@ resource relationshipSubmitExpensesToApiLayer 'Microsoft.CloudHealth/healthmodel
     parentEntityName: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1353,7 +1345,7 @@ resource relationshipDataLayerToServiceBus 'Microsoft.CloudHealth/healthmodels/r
     parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1381,7 +1373,7 @@ resource relationshipSubmitExpensesToProcessingLayer 'Microsoft.CloudHealth/heal
     parentEntityName: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1409,7 +1401,7 @@ resource relationshipDataLayerToStorage 'Microsoft.CloudHealth/healthmodels/rela
     parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1465,7 +1457,7 @@ resource relationshipDataLayerToCosmos 'Microsoft.CloudHealth/healthmodels/relat
     parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1493,7 +1485,7 @@ resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHeal
     parentEntityName: healthModelName
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1521,7 +1513,7 @@ resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels
     parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1549,7 +1541,7 @@ resource relationshipProcessingLayerToKeyVault 'Microsoft.CloudHealth/healthmode
     parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
@@ -1577,7 +1569,7 @@ resource relationshipProcessingLayerToOcr 'Microsoft.CloudHealth/healthmodels/re
     parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
   }
   dependsOn: [
-    entityStorage
+    entityPrimaryStorage
     entityWorker
     entityBffPlan
     entityApiLayer
