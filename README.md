@@ -195,7 +195,27 @@ OCR response:
 }
 ```
 
+### Health model auto-discovery demo
+The health model includes a scoped Azure Resource Graph discovery rule (`regional-policy-config`) that automatically adds **App Configuration** stores tagged `component=policy-config` as monitored entities. These stores represent per-region ExpenseFlow expense policy and are provisioned as a fleet (one per Azure region) separate from the hand-authored entities.
+
+Deployment provisions three regional stores by default. Discovery runs about every five minutes, so newly added or removed tagged stores are reflected automatically with recommended signals and an Azure Resource Health signal.
+
+List the discovered stores:
+
+```powershell
+$resourceGroupName = "<resource-group-name>"
+az appconfig list --resource-group $resourceGroupName --query "[?tags.component=='policy-config'].{name:name, region:tags.region, location:location}" --output table
+```
+
+To demonstrate live auto-discovery, set `enableDemoPolicyConfigRegion = true` in `main.subscription.bicepparam` (or pass it on the command line) and redeploy. This provisions one additional regional store, which the health model discovers within a few minutes:
+
+```powershell
+az deployment sub create --name expenseflow-demo-infra --location northeurope --template-file main.subscription.bicep --parameters main.subscription.bicepparam enableDemoPolicyConfigRegion=true
+```
+
 ### Notes
 - With `restrictNetworkAccess = true` and `allowPublicMonitorQueryAccess = true`, Azure Monitor query access is public for the demo; ingestion and other services stay restricted.
 - If `deploymentClientIpRanges` is empty, run deployment and API calls from the private network path.
 - Function package containers are `function-packages-bff`, `function-packages-worker`, and `function-packages-ocr`.
+- The regional policy config stores use App Configuration Free tier (one store per Azure region) and are public-endpoint only; they exist purely as auto-discovery filler and sit outside the locked-down data path.
+- `healthModelName` is optional; leave it empty to auto-generate the health model resource name.

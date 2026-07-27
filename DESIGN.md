@@ -48,6 +48,15 @@ All resources must comply with a restricted enterprise environment:
 - Authored in Bicep over the provisioned resources.
 - Composed of monitored entities and their relationships, producing aggregated health states for the demo.
 
+### Auto-discovery (regional policy configuration)
+Alongside the hand-authored entities, the health model includes an **Azure Resource Graph discovery rule** (`regional-policy-config`) that demonstrates dynamic, scoped auto-discovery without touching the manually authored model.
+
+- **What is discovered:** a fleet of **Azure App Configuration** stores, each representing a region's ExpenseFlow expense policy (approval thresholds, per-diem limits, VAT handling, allowed currencies). The Functions would load the caller's regional store at runtime to decide how to process an expense.
+- **Scope:** the rule's ARG query matches only stores tagged `component=policy-config`, so it never overlaps with the hand-authored entities. Discovered entities attach to a discovery-generated node, keeping the manual model pristine.
+- **Signals:** recommended signals and an Azure Resource Health availability signal are added automatically to every discovered store.
+- **Dynamic behavior:** discovery runs every ~5 minutes, so adding or removing a tagged store is reflected automatically. Each store is deployed to its own Azure region (Free tier, one per region) to match the regional narrative.
+- **Live demo lever:** setting `enableDemoPolicyConfigRegion = true` provisions an extra regional store that the model auto-discovers within a few minutes, showing discovery reacting to a growing environment.
+
 ## Scenario — ExpenseFlow
 A receipt/expense processing app that exercises the full architecture and gives an intuitive, linear flow to narrate health propagation.
 

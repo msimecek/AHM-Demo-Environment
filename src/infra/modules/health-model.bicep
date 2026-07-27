@@ -74,6 +74,25 @@ resource authenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels
   }
 }
 
+resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discoveryrules@2026-05-01-preview' = {
+  parent: healthModel
+  name: 'regional-policy-config'
+  properties: {
+    displayName: 'Discover regional policy configuration stores'
+    authenticationSetting: 'systemassigned'
+    discoverRelationships: 'Enabled'
+    addRecommendedSignals: 'Enabled'
+    addResourceHealthSignal: 'Enabled'
+    specification: {
+      kind: 'ResourceGraphQuery'
+      resourceGraphQuery: 'resources | where type =~ \'microsoft.appconfiguration/configurationstores\' and tags[\'component\'] =~ \'policy-config\''
+    }
+  }
+  dependsOn: [
+    authenticationSettingSystemAssigned
+  ]
+}
+
 
 resource signalDefinitionAspHttpQueueLength 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
   parent: healthModel

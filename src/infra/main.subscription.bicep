@@ -23,6 +23,9 @@ param allowPublicMonitorQueryAccess bool = false
 @description('Optional name for the health model resource. When empty, a name is generated automatically.')
 param healthModelName string = ''
 
+@description('When true, provisions an additional regional policy configuration store to demonstrate live health-model auto-discovery.')
+param enableDemoPolicyConfigRegion bool = false
+
 @description('Resource group deployments. Add more entries for future multi-region deployments.')
 param deployments array = [
   {
@@ -55,6 +58,7 @@ module workloadDeployments 'main.bicep' = [for (deployment, index) in deployment
     updateOcrFunctionKeySecret: updateOcrFunctionKeySecret
     allowPublicMonitorQueryAccess: allowPublicMonitorQueryAccess
     healthModelName: healthModelName
+    enableDemoPolicyConfigRegion: enableDemoPolicyConfigRegion
     tags: union(tags, {
       deployment: deployment.name
     })

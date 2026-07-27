@@ -34,6 +34,31 @@ param allowPublicMonitorQueryAccess bool = false
 @description('Optional name for the health model resource. When empty, a name is generated automatically.')
 param healthModelName string = ''
 
+@description('Regional policy configuration stores (App Configuration) discovered by the health model ARG discovery rule. Each entry maps a policy region code to an Azure region.')
+param policyConfigRegions array = [
+  {
+    code: 'weu'
+    location: 'westeurope'
+  }
+  {
+    code: 'neu'
+    location: 'northeurope'
+  }
+  {
+    code: 'use'
+    location: 'eastus'
+  }
+]
+
+@description('When true, provisions an additional regional policy configuration store to demonstrate live health-model auto-discovery.')
+param enableDemoPolicyConfigRegion bool = false
+
+@description('Policy region code and Azure region for the on-demand auto-discovery demo store.')
+param demoPolicyConfigRegion object = {
+  code: 'uks'
+  location: 'uksouth'
+}
+
 var baseName = toLower('${workloadName}-${environmentName}')
 var compactName = replace(baseName, '-', '')
 var uniqueSuffix = uniqueString(resourceGroup().id, baseName)
@@ -58,6 +83,7 @@ var workerFunctionAppName = take('func-${baseName}-worker-${uniqueSuffix}', 60)
 var ocrFunctionAppName = take('func-${baseName}-ocr-${uniqueSuffix}', 60)
 var ocrFunctionKeySecretName = 'ocr-function-key'
 var healthModelResourceName = empty(healthModelName) ? take('hm-${baseName}-${uniqueSuffix}', 90) : healthModelName
+var policyConfigAllRegions = enableDemoPolicyConfigRegion ? concat(policyConfigRegions, [demoPolicyConfigRegion]) : policyConfigRegions
 
 var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
@@ -597,6 +623,19 @@ module azureMonitorPrivateEndpoint 'modules/monitor-private-endpoint.bicep' = {
     tags: commonTags
   }
 }
+
+module policyConfigStores 'modules/app-config.bicep' = [for region in policyConfigAllRegions: {
+  name: 'policy-config-${region.code}'
+  params: {
+    name: take('appcs-${baseName}-${region.code}-${uniqueSuffix}', 50)
+    location: region.location
+    skuName: 'free'
+    tags: union(commonTags, {
+      component: 'policy-config'
+      region: region.code
+    })
+  }
+}]
 
 module healthModel 'modules/health-model.bicep' = {
   name: 'health-model'
