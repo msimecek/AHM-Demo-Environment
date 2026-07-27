@@ -20,6 +20,9 @@ param updateOcrFunctionKeySecret bool = true
 @description('When true, allows public Azure Monitor query access for demo health-model queries while keeping ingestion private.')
 param allowPublicMonitorQueryAccess bool = false
 
+@description('Optional name for the health model resource. When empty, a name is generated automatically.')
+param healthModelName string = ''
+
 @description('Resource group deployments. Add more entries for future multi-region deployments.')
 param deployments array = [
   {
@@ -51,6 +54,7 @@ module workloadDeployments 'main.bicep' = [for (deployment, index) in deployment
     restrictNetworkAccess: restrictNetworkAccess
     updateOcrFunctionKeySecret: updateOcrFunctionKeySecret
     allowPublicMonitorQueryAccess: allowPublicMonitorQueryAccess
+    healthModelName: healthModelName
     tags: union(tags, {
       deployment: deployment.name
     })

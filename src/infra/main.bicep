@@ -31,6 +31,9 @@ param updateOcrFunctionKeySecret bool = true
 @description('When true, allows public Azure Monitor query access for demo health-model queries while keeping ingestion private.')
 param allowPublicMonitorQueryAccess bool = false
 
+@description('Optional name for the health model resource. When empty, a name is generated automatically.')
+param healthModelName string = ''
+
 var baseName = toLower('${workloadName}-${environmentName}')
 var compactName = replace(baseName, '-', '')
 var uniqueSuffix = uniqueString(resourceGroup().id, baseName)
@@ -54,7 +57,7 @@ var bffFunctionAppName = take('func-${baseName}-bff-${uniqueSuffix}', 60)
 var workerFunctionAppName = take('func-${baseName}-worker-${uniqueSuffix}', 60)
 var ocrFunctionAppName = take('func-${baseName}-ocr-${uniqueSuffix}', 60)
 var ocrFunctionKeySecretName = 'ocr-function-key'
-var healthModelName = take('hm-${baseName}-${uniqueSuffix}', 90)
+var healthModelResourceName = empty(healthModelName) ? take('hm-${baseName}-${uniqueSuffix}', 90) : healthModelName
 
 var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
@@ -599,7 +602,7 @@ module healthModel 'modules/health-model.bicep' = {
   name: 'health-model'
   params: {
     location: location
-    healthModelName: healthModelName
+    healthModelName: healthModelResourceName
     tags: commonTags
     storageAccountResourceId: storage.outputs.id
     secondaryStorageAccountResourceId: secondaryStorage.outputs.id
@@ -929,7 +932,7 @@ resource ocrApplicationInsightsPublisherRole 'Microsoft.Authorization/roleAssign
 }
 
 resource healthModelMonitoringReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, healthModelName, monitoringReaderRoleId)
+  name: guid(resourceGroup().id, healthModelResourceName, monitoringReaderRoleId)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringReaderRoleId)
     principalId: healthModel.outputs.healthModelPrincipalId
@@ -938,7 +941,7 @@ resource healthModelMonitoringReaderRole 'Microsoft.Authorization/roleAssignment
 }
 
 resource healthModelReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, healthModelName, readerRoleId)
+  name: guid(resourceGroup().id, healthModelResourceName, readerRoleId)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', readerRoleId)
     principalId: healthModel.outputs.healthModelPrincipalId
@@ -947,7 +950,7 @@ resource healthModelReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-
 }
 
 resource healthModelLogAnalyticsReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(logAnalyticsWorkspaceResource.id, healthModelName, logAnalyticsReaderRoleId)
+  name: guid(logAnalyticsWorkspaceResource.id, healthModelResourceName, logAnalyticsReaderRoleId)
   scope: logAnalyticsWorkspaceResource
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', logAnalyticsReaderRoleId)
