@@ -78,7 +78,7 @@ resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discovery
   parent: healthModel
   name: 'regional-policy-config'
   properties: {
-    displayName: 'Discover regional policy configuration stores'
+    displayName: 'Regional configuration stores'
     authenticationSetting: 'systemassigned'
     discoverRelationships: 'Enabled'
     addRecommendedSignals: 'Enabled'
