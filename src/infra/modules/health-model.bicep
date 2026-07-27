@@ -447,6 +447,12 @@ resource entityApiLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-
   parent: healthModel
   name: '5ccf2422-068d-49b9-9586-559368a77a46'
   properties: {
+    alerts: {
+      unhealthy: {
+        description: 'API layer is experiencing a critical failure and requires immediate attention.'
+        severity: 'Sev0'
+      }
+    }
     canvasPosition: {
       x: -510
       y: 370
@@ -537,6 +543,12 @@ resource entityManagementLayer 'Microsoft.CloudHealth/healthmodels/entities@2026
   parent: healthModel
   name: '72dbfe59-ddc0-4b40-85c4-16ac53262023'
   properties: {
+    alerts: {
+      unhealthy: {
+        description: 'Management layer is experiencing a critical failure and requires immediate attention.'
+        severity: 'Sev0'
+      }
+    }
     canvasPosition: {
       x: 910
       y: 370
@@ -747,7 +759,7 @@ resource entityProcessingLayer 'Microsoft.CloudHealth/healthmodels/entities@2026
   properties: {
     alerts: {
       unhealthy: {
-        description: 'Processing layer is in trouble.'
+        description: 'Processing layer is experiencing a critical failure and requires immediate attention.'
         severity: 'Sev0'
       }
     }
