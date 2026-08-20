@@ -569,8 +569,8 @@ resource entityExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/entities@
   name: externalOcrProviderEntityName
   properties: {
     canvasPosition: {
-      x: 720
-      y: 770
+      x: 630
+      y: 970
     }
     displayName: 'OCR provider (external)'
     icon: {
