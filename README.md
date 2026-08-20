@@ -21,7 +21,9 @@ The sample workload is **ExpenseFlow**, a small receipt and expense processing a
 
 The infrastructure and the message flow are real, but the receipt and OCR work is simulated: no images are uploaded and no extraction runs. A keep-alive timer creates synthetic expenses continuously, so the environment produces signals even when nobody uses the API. Latency, failure rate, and reported health state come from Function App settings, which makes each demo step steerable without real data.
 
-See [DESIGN.md](./DESIGN.md) for more details.
+See [DESIGN.md](./docs/DESIGN.md) for more details.
+
+To build the same health model by hand during a live demo, use [docs/Manual-Model-Build.md](./docs/Manual-Model-Build.md).
 
 ## How to use
 
