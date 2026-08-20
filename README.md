@@ -3,24 +3,33 @@
 ## Purpose
 A self-contained demo environment for [Azure Monitor health models](https://learn.microsoft.com/azure/azure-monitor/health-models/overview). It provisions a set of Azure resources, defines a health model over them, and provides a small control panel to trigger health-state changes for demonstration.
 
+![Graph view of the deployed health model](./images/demo-model-graph-view.png)
+
 ## Goals
 - Show how a health model is authored and deployed alongside infrastructure.
 - Demonstrate health-state propagation across related resources.
 - Allow live, on-demand manipulation of signals (health states, queue messages).
-- Be fully deployable into a restricted enterprise environment.
+- Be deployable into a **restricted enterprise environment**.
 
 ## Non-Goals
 - Production-grade workloads or scale.
 - Comprehensive coverage of every Azure resource type.
 - Long-running or stateful business logic beyond what the demo needs.
 
+## Scenario
+The sample workload is **ExpenseFlow**, a small receipt and expense processing application. A Backend-for-frontend (BFF) Function accepts a synthetic expense report, writes a JSON receipt to Blob Storage, and queues a message on Service Bus. A Worker Function reads the queue, calls a dedicated OCR Function to extract receipt data, and writes the expense record to Cosmos DB. All Functions send telemetry to Application Insights and Log Analytics. The health model is authored over these resources, so queue depth, dependency failures, and resource health propagate through related entities.
+
+The infrastructure and the message flow are real, but the receipt and OCR work is simulated: no images are uploaded and no extraction runs. A keep-alive timer creates synthetic expenses continuously, so the environment produces signals even when nobody uses the API. Latency, failure rate, and reported health state come from Function App settings, which makes each demo step steerable without real data.
+
+See [DESIGN.md](./DESIGN.md) for more details.
+
 ## How to use
 
 ### Prerequisites
 - PowerShell, Azure CLI, .NET SDK 10.
-- Azure CLI signed in to the target subscription.
-- The deploying identity must have ARM rights for the resource group and `Storage Blob Data Contributor` on the demo storage account.
-- If running from a dev machine while `restrictNetworkAccess = true`, add the machine's outbound public IP to the deployment parameters.
+- Azure CLI signed in to the **target subscription**.
+- The deploying identity (typically end user - you) must have ARM rights for the resource group and `Storage Blob Data Contributor` on the demo storage account.
+- If running from a dev machine while `restrictNetworkAccess = true`, add the machine's **outbound public IP to the deployment parameters**.
 
 ### Deploy infrastructure
 Copy the example deployment parameters to a local parameter file before deploying, then set the target resource group, Azure region, deployment client IP ranges, and network access flags for your environment.
@@ -142,13 +151,6 @@ Response:
   "Category": "Office",
   "SubmittedAt": "2026-07-08T11:41:19.3750103+02:00"
 }
-```
-
-Check queue drain:
-
-```powershell
-$serviceBusNamespaceName = az servicebus namespace list --resource-group $resourceGroupName --query "[?tags.workload=='expenseflow'].name | [0]" --output tsv
-az servicebus queue show --resource-group $resourceGroupName --namespace-name $serviceBusNamespaceName --name expenses --query "{active:countDetails.activeMessageCount, deadletter:countDetails.deadLetterMessageCount}" --output table
 ```
 
 Call OCR directly for test only, using a receipt blob name returned by synthetic submission:
