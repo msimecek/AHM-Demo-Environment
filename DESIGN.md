@@ -12,6 +12,8 @@ flowchart LR
     worker --> storage
     worker --> ocr[OCR Function]
     ocr --> storage
+    ocr -->|Managed Identity health report| external[External OCR provider entity]
+    external --> health
     worker --> db[Cosmos DB]
     bff --> telemetry[Application Insights]
     worker --> telemetry
@@ -30,6 +32,7 @@ flowchart LR
 ## Observability
 - Application Insights is enabled for all Functions and backed by a central Log Analytics workspace.
 - Telemetry ingestion/query access uses Azure Monitor Private Link and private DNS; public ingestion/query paths are disabled where supported.
+- The OCR Function uses a dedicated user-assigned managed identity to submit external OCR provider health reports directly to the health model.
 
 ## Security & Compliance Baseline
 All resources must comply with a restricted enterprise environment:
@@ -47,6 +50,15 @@ All resources must comply with a restricted enterprise environment:
 ## Health Model
 - Authored in Bicep over the provisioned resources.
 - Composed of monitored entities and their relationships, producing aggregated health states for the demo.
+
+### External health reporting
+The model includes an `OCR provider (external)` entity for demonstrating application-supplied health through the `ingestHealthReport` API. The OCR Function hosts a timer-triggered reporter and uses a dedicated user-assigned managed identity with `Contributor` access scoped to the health model.
+
+- **Schedule:** the heartbeat runs every 10 seconds by default.
+- **Reporting probability:** each run has a configurable probability of sending a report; the default is `0.35`.
+- **Reported state:** the reporter sends the configured `Healthy`, `Degraded`, `Unhealthy`, or `Unknown` state. It does not infer provider health from OCR failures.
+- **Expiry:** reports expire after two minutes by default. If no new report arrives, the entity becomes `Unknown`, not `Unhealthy`.
+- **Live demo lever:** set the reporting probability to `1` and change the configured state to force a deterministic health transition and propagation through the model.
 
 ### Auto-discovery (regional policy configuration)
 Alongside the hand-authored entities, the health model includes an **Azure Resource Graph discovery rule** (`regional-policy-config`) that demonstrates dynamic, scoped auto-discovery without touching the manually authored model.
@@ -70,7 +82,7 @@ A receipt/expense processing app that exercises the full architecture and gives 
 - **Azure Storage** — blob storage for receipt images and a private Storage Queue reserved for future demo signals/events.
 - **Database** — expense records and approval state.
 
-**Health story:** when the OCR microservice degrades, the background processor's backlog grows and queue depth rises, propagating unhealthy state up the model. Storage throttling and a stalled background worker are similarly visible.
+**Health story:** when the OCR microservice degrades, the background processor's backlog grows and queue depth rises, propagating unhealthy state up the model. The external OCR provider can also report an explicit unhealthy state, demonstrating direct health ingestion and propagation. Storage throttling and a stalled background worker are similarly visible.
 
 **Demo levers (control panel):** flood the queue, take down the OCR microservice, throttle storage, and force health-state changes to show propagation.
 
@@ -80,6 +92,7 @@ Keep the plumbing real, simulate the work. All Functions, Service Bus, Storage, 
 - **Synthetic submissions** — the BFF generates a fake expense (random vendor, amount, category) and writes a small JSON "receipt" blob to Storage (trivial, so done for real), then enqueues a message.
 - **Keep-alive timer** — a timer-triggered function in the BFF app periodically creates synthetic submissions so the queue, worker, OCR service, storage, database, and telemetry keep producing signals even when no one is using the control panel.
 - **Simulated OCR** — the microservice waits a configurable delay and returns canned/random structured data; no image processing.
+- **External health reporter** — a timer in the OCR Function probabilistically sends the configured external provider state to the health model; missing reports expire to `Unknown`.
 - **Simulated processing** — the background Function dequeues, waits a configurable interval, calls the OCR service, and writes the expense record to the database. Real I/O, no real compute.
 - **Config-driven behavior** — per-component latency, failure rate, and health state come from app settings / control-panel signals, so the flow is fully steerable without real data.
 

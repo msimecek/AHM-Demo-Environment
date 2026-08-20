@@ -67,6 +67,10 @@ The demo behavior is controlled by Function App application settings. Infrastruc
 | --- | --- | --- | --- |
 | OCR failure rate | OCR | `0` | Decimal probability from `0` to `1`; use `0.25` for roughly one failed OCR call in four, or `1` to force every OCR call to fail. |
 | OCR response delay | OCR | `500` ms | Adds artificial latency before the OCR response; increase it to make downstream processing slower and make backlogs easier to observe. |
+| External OCR provider heartbeat | OCR | enabled, every 10 seconds | Attempts to report the configured external provider health to the Health Model on each timer run. |
+| External OCR provider report probability | OCR | `0.35` | Decimal probability from `0` to `1`; use `1` to send on every heartbeat during a demo. |
+| External OCR provider health | OCR | `Healthy` | Health state sent by the reporter. Valid values are `Healthy`, `Degraded`, `Unhealthy`, and `Unknown`. |
+| External OCR provider report expiry | OCR | `2` minutes | If no new report arrives before expiry, the external provider entity becomes `Unknown`; expiry does not make it `Unhealthy`. |
 | Worker processing delay | Worker | `1000` ms | Adds artificial latency before each queued expense is processed; increase it to grow queue depth without making OCR fail. |
 | Keep-alive submissions | BFF | enabled | Periodically creates synthetic expenses so the environment keeps producing telemetry even when nobody is actively using the API. |
 | Keep-alive interval | BFF | every 30 seconds | Uses the Azure Functions timer schedule format; make it less frequent to reduce background traffic or more frequent to create continuous load. |
@@ -98,7 +102,7 @@ az functionapp function list --resource-group $resourceGroupName --name $ocrFunc
 Expected functions:
 - BFF: `SubmitSyntheticExpense`, `KeepAlive`.
 - Worker: `ProcessExpense`.
-- OCR: `ExtractReceipt`.
+- OCR: `ExtractReceipt`, `ExternalOcrProviderHeartbeat`.
 
 ### API usage
 Get Function keys once per environment and keep them locally:
@@ -184,6 +188,27 @@ OCR response:
   "ProcessedAt": "2026-07-08T09:41:22.1234567+00:00"
 }
 ```
+
+### External health reporter demo
+The OCR Function simulates an external OCR provider that reports its own health through the Health Model `ingestHealthReport` API. A dedicated user-assigned managed identity is attached to the OCR Function and granted `Contributor` on the Health Model. The reporter targets the `OCR provider (external)` entity and sends the health state configured in `ExpenseFlow__ExternalOcrProviderHealth`.
+
+The reporter does not inspect OCR failures or automatically choose `Unhealthy`. To force an unhealthy report for a demo, set the report probability to `1`, set the state to `Unhealthy`, and restart the OCR Function App:
+
+```powershell
+$resourceGroupName = "<resource-group-name>"
+$ocrFunctionAppName = az functionapp list --resource-group $resourceGroupName --query "[?tags.component=='ocr'].name | [0]" --output tsv
+az functionapp config appsettings set --resource-group $resourceGroupName --name $ocrFunctionAppName --settings ExpenseFlow__ExternalOcrProviderHeartbeatSendProbability=1 ExpenseFlow__ExternalOcrProviderHealth=Unhealthy
+az functionapp restart --resource-group $resourceGroupName --name $ocrFunctionAppName
+```
+
+Restore healthy probabilistic reporting after the demo:
+
+```powershell
+az functionapp config appsettings set --resource-group $resourceGroupName --name $ocrFunctionAppName --settings ExpenseFlow__ExternalOcrProviderHeartbeatSendProbability=0.35 ExpenseFlow__ExternalOcrProviderHealth=Healthy
+az functionapp restart --resource-group $resourceGroupName --name $ocrFunctionAppName
+```
+
+With the default 10-second schedule and `0.35` probability, some successful timer invocations intentionally skip sending a report. If reports stop for more than two minutes, the entity changes to `Unknown` when the last report expires.
 
 ### Health model auto-discovery demo
 The health model includes a scoped Azure Resource Graph discovery rule (`regional-policy-config`) that automatically adds **App Configuration** stores tagged `component=policy-config` as monitored entities. These stores represent per-region ExpenseFlow expense policy and are provisioned as a fleet (one per Azure region) separate from the hand-authored entities.
