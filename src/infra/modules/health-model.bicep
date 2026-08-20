@@ -569,7 +569,7 @@ resource entityExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/entities@
   name: externalOcrProviderEntityName
   properties: {
     canvasPosition: {
-      x: 630
+      x: 620
       y: 970
     }
     displayName: 'OCR provider (external)'
@@ -1168,7 +1168,7 @@ resource entitySubmitExpenses 'Microsoft.CloudHealth/healthmodels/entities@2026-
   name: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
   properties: {
     canvasPosition: {
-      x: 0
+      x: -10
       y: 150
     }
     displayName: 'Submit expenses'
@@ -1189,7 +1189,7 @@ resource entityExpenseFlowApplication 'Microsoft.CloudHealth/healthmodels/entiti
   name: healthModelName
   properties: {
     canvasPosition: {
-      x: 0
+      x: -10
       y: 0
     }
     displayName: 'ExpenseFlow Application'
