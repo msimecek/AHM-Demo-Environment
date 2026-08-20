@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $ResourceGroupName,
     [string] $SubscriptionDeploymentName,
-    [string] $OutputPath = (Join-Path $PSScriptRoot '..\.deployment\health-model-annotations.json'),
+    [string] $OutputPath = (Join-Path $PSScriptRoot '..\.deployment\health-model-details.json'),
     [int] $LatestDeploymentSearchLimit = 25
 )
 
@@ -31,7 +31,7 @@ function Assert-NativeCommandSucceeded {
     }
 }
 
-function Get-HealthModelAnnotationMapFromOutputs {
+function Get-HealthModelDetailsMapFromOutputs {
     param(
         [Parameter(Mandatory = $true)]
         [object] $Outputs,
@@ -41,14 +41,14 @@ function Get-HealthModelAnnotationMapFromOutputs {
     )
 
     if ($null -ne $Outputs.healthModelAnnotationMaps) {
-        $maps = @($Outputs.healthModelAnnotationMaps.value)
+        throw "Deployment outputs use the old 'healthModelAnnotationMaps' name. Rerun scripts\Deploy-Infra.ps1 with the current templates."
     }
-    elseif ($null -ne $Outputs.healthModelAnnotationMap) {
-        $maps = @($Outputs.healthModelAnnotationMap.value)
-    }
-    else {
+
+    if ($null -eq $Outputs.healthModelDetailsMaps) {
         return $null
     }
+
+    $maps = @($Outputs.healthModelDetailsMaps.value)
 
     $matchingMaps = @($maps | Where-Object {
             -not [string]::IsNullOrWhiteSpace($_.resourceGroupName) -and $_.resourceGroupName -eq $ResourceGroupName
@@ -59,7 +59,7 @@ function Get-HealthModelAnnotationMapFromOutputs {
     }
 
     if ($matchingMaps.Count -gt 1) {
-        throw "Deployment outputs contain multiple Health Model annotation maps for resource group '$ResourceGroupName'."
+        throw "Deployment outputs contain multiple Health Model details maps for resource group '$ResourceGroupName'."
     }
 
     return $matchingMaps[0]
@@ -93,7 +93,7 @@ function Get-SubscriptionDeploymentOutputs {
         $deployment = az deployment sub show --name $candidateDeployment.name --output json | ConvertFrom-Json
         Assert-NativeCommandSucceeded "Subscription deployment '$($candidateDeployment.name)' lookup"
 
-        if ($null -ne (Get-HealthModelAnnotationMapFromOutputs -Outputs $deployment.properties.outputs -ResourceGroupName $ResourceGroupName)) {
+        if ($null -ne (Get-HealthModelDetailsMapFromOutputs -Outputs $deployment.properties.outputs -ResourceGroupName $ResourceGroupName)) {
             return [pscustomobject]@{
                 name = $deployment.name
                 outputs = $deployment.properties.outputs
@@ -101,10 +101,10 @@ function Get-SubscriptionDeploymentOutputs {
         }
     }
 
-    throw "Could not find a recent successful subscription deployment with Health Model annotation map outputs for resource group '$ResourceGroupName'. Pass -SubscriptionDeploymentName after redeploying the infra template."
+    throw "Could not find a recent successful subscription deployment with Health Model details map outputs for resource group '$ResourceGroupName'. Pass -SubscriptionDeploymentName after redeploying the infra template."
 }
 
-function Save-HealthModelAnnotationMap {
+function Save-HealthModelDetailsMap {
     param(
         [Parameter(Mandatory = $true)]
         [object] $Map,
@@ -122,6 +122,7 @@ function Save-HealthModelAnnotationMap {
         sourceDeploymentName = $SourceDeploymentName
         subscriptionId = $Map.subscriptionId
         resourceGroupName = $Map.resourceGroupName
+        storageAccountName = Get-RequiredValue -Value $Map.storageAccountName -Description 'package storage account name in deployment outputs'
         healthModelResourceId = $Map.healthModelResourceId
         functionApps = @($Map.functionApps)
     }
@@ -131,7 +132,7 @@ function Save-HealthModelAnnotationMap {
     New-Item -ItemType Directory -Force $outputDirectory | Out-Null
     $outputMap | ConvertTo-Json -Depth 10 | Set-Content -Path $resolvedOutputPath -Encoding utf8
 
-    Write-Host "Wrote Health Model annotation map to $resolvedOutputPath"
+    Write-Host "Wrote Health Model details map to $resolvedOutputPath"
     Write-Host "Source deployment: $SourceDeploymentName"
     foreach ($functionApp in $outputMap.functionApps) {
         Write-Host "$($functionApp.name): $($functionApp.entityNames -join ', ')"
@@ -140,10 +141,10 @@ function Save-HealthModelAnnotationMap {
 
 $ResourceGroupName = Get-RequiredValue $ResourceGroupName 'resource group name'
 $deploymentOutputs = Get-SubscriptionDeploymentOutputs -SubscriptionDeploymentName $SubscriptionDeploymentName -ResourceGroupName $ResourceGroupName -LatestDeploymentSearchLimit $LatestDeploymentSearchLimit
-$annotationMap = Get-HealthModelAnnotationMapFromOutputs -Outputs $deploymentOutputs.outputs -ResourceGroupName $ResourceGroupName
+$detailsMap = Get-HealthModelDetailsMapFromOutputs -Outputs $deploymentOutputs.outputs -ResourceGroupName $ResourceGroupName
 
-if ($null -eq $annotationMap) {
-    throw "Deployment '$($deploymentOutputs.name)' does not contain Health Model annotation map outputs for resource group '$ResourceGroupName'."
+if ($null -eq $detailsMap) {
+    throw "Deployment '$($deploymentOutputs.name)' does not contain Health Model details map outputs for resource group '$ResourceGroupName'."
 }
 
-Save-HealthModelAnnotationMap -Map $annotationMap -OutputPath $OutputPath -SourceDeploymentName $deploymentOutputs.name
+Save-HealthModelDetailsMap -Map $detailsMap -OutputPath $OutputPath -SourceDeploymentName $deploymentOutputs.name

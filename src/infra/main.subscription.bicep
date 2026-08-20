@@ -67,4 +67,4 @@ module workloadDeployments 'main.bicep' = [for (deployment, index) in deployment
 
 output resourceGroupNames array = [for deployment in deployments: deployment.resourceGroupName]
 output healthModelResourceIds array = [for (deployment, index) in deployments: workloadDeployments[index].outputs.healthModelResourceId]
-output healthModelAnnotationMaps array = [for (deployment, index) in deployments: workloadDeployments[index].outputs.healthModelAnnotationMap]
+output healthModelDetailsMaps array = [for (deployment, index) in deployments: workloadDeployments[index].outputs.healthModelDetailsMap]

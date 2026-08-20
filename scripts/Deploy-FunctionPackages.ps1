@@ -7,7 +7,7 @@ param(
     [string] $OcrFunctionAppName,
     [string] $Configuration = 'Release',
     [string] $ArtifactsPath = (Join-Path $env:TEMP 'expenseflow-function-packages'),
-    [string] $HealthModelAnnotationMapPath = (Join-Path $PSScriptRoot '..\.deployment\health-model-annotations.json'),
+    [string] $HealthModelDetailsMapPath = (Join-Path $PSScriptRoot '..\.deployment\health-model-details.json'),
     [string] $DeploymentVersion = "v$((Get-Date).ToString('yyyy.M.d'))",
     [string] $DeploymentRollout = (Get-Date).ToString('yyyyMMddHHmmss'),
     [string] $DeploymentAnnotationDescription,
@@ -40,29 +40,6 @@ function Assert-NativeCommandSucceeded {
     if ($LASTEXITCODE -ne 0) {
         throw "$Description failed with exit code $LASTEXITCODE."
     }
-}
-
-function Get-StorageAccountName {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $ResourceGroupName
-    )
-
-    $accounts = @(az storage account list --resource-group $ResourceGroupName --output json | ConvertFrom-Json)
-    Assert-NativeCommandSucceeded 'Storage account discovery'
-
-    $matchingAccounts = @($accounts | Where-Object { $_.tags.workload -eq 'expenseflow' })
-
-    if ($matchingAccounts.Count -eq 0) {
-        throw "Could not find an ExpenseFlow storage account in resource group '$ResourceGroupName'. Pass -StorageAccountName explicitly."
-    }
-
-    if ($matchingAccounts.Count -gt 1) {
-        $accountNames = ($matchingAccounts | ForEach-Object { $_.name }) -join ', '
-        throw "Found multiple ExpenseFlow storage accounts in resource group '$ResourceGroupName': $accountNames. Pass -StorageAccountName explicitly."
-    }
-
-    return $matchingAccounts[0].name
 }
 
 function Get-StorageAccountResourceId {
@@ -177,7 +154,7 @@ function Get-ManagementAccessToken {
     return Get-RequiredValue $accessToken 'Azure management access token'
 }
 
-function Get-HealthModelAnnotationMap {
+function Get-HealthModelDetailsMap {
     param(
         [Parameter(Mandatory = $true)]
         [string] $Path
@@ -290,9 +267,14 @@ function Add-HealthModelDeploymentAnnotation {
 }
 
 $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+$healthModelDetailsMap = $null
+
+if ([string]::IsNullOrWhiteSpace($StorageAccountName) -or -not $SkipHealthModelAnnotation) {
+    $healthModelDetailsMap = Get-HealthModelDetailsMap -Path $HealthModelDetailsMapPath
+}
 
 if ([string]::IsNullOrWhiteSpace($StorageAccountName)) {
-    $StorageAccountName = Get-StorageAccountName -ResourceGroupName $ResourceGroupName
+    $StorageAccountName = Get-RequiredValue $healthModelDetailsMap.storageAccountName "storage account name in '$HealthModelDetailsMapPath'"
 }
 
 if ([string]::IsNullOrWhiteSpace($BffFunctionAppName)) {
@@ -368,11 +350,9 @@ else {
 }
 
 $managementAccessToken = $null
-$healthModelAnnotationMap = $null
 
 if (-not $SkipHealthModelAnnotation) {
     $managementAccessToken = Get-ManagementAccessToken
-    $healthModelAnnotationMap = Get-HealthModelAnnotationMap -Path $HealthModelAnnotationMapPath
 }
 
 foreach ($app in $apps) {
@@ -399,11 +379,11 @@ foreach ($app in $apps) {
     Assert-NativeCommandSucceeded "$($app.Name) trigger sync"
 
     if (-not $SkipHealthModelAnnotation) {
-        $entityNames = Get-HealthModelAnnotationEntityNames -Map $healthModelAnnotationMap -AppName $app.Name -ResourceId $appId -Component $app.ArtifactName
+        $entityNames = Get-HealthModelAnnotationEntityNames -Map $healthModelDetailsMap -AppName $app.Name -ResourceId $appId -Component $app.ArtifactName
         foreach ($entityName in $entityNames) {
             Write-Host "Adding deployment annotation to Health Model entity $entityName for $($app.Name)..."
             Add-HealthModelDeploymentAnnotation `
-                -ModelRoot $healthModelAnnotationMap.healthModelResourceId `
+                -ModelRoot $healthModelDetailsMap.healthModelResourceId `
                 -EntityName $entityName `
                 -DeploymentVersion $DeploymentVersion `
                 -DeploymentRollout $DeploymentRollout `

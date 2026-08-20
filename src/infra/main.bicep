@@ -1101,10 +1101,11 @@ output cosmosEndpoint string = cosmos.outputs.endpoint
 output logAnalyticsWorkspaceName string = observability.outputs.workspaceName
 output applicationInsightsName string = observability.outputs.applicationInsightsName
 output healthModelResourceId string = healthModel.outputs.healthModelResourceId
-output healthModelAnnotationMap object = {
+output healthModelDetailsMap object = {
   apiVersion: '2026-05-01-preview'
   subscriptionId: subscription().subscriptionId
   resourceGroupName: resourceGroup().name
+  storageAccountName: storage.outputs.name
   healthModelResourceId: healthModel.outputs.healthModelResourceId
   functionApps: [
     {

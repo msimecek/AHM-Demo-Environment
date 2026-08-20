@@ -25,13 +25,12 @@ A self-contained demo environment for [Azure Monitor health models](https://lear
 ### Deploy infrastructure
 Copy the example deployment parameters to a local parameter file before deploying, then set the target resource group, Azure region, deployment client IP ranges, and network access flags for your environment.
 
-Run the infrastructure deployment in two stages. The first stage creates the Function Apps and leaves the OCR Function key secret update disabled; the second stage is an incremental deployment that writes the OCR Function key secret after the OCR Function host key endpoint exists. This avoids a first-deployment race where the Function App ARM resource is provisioned before its host keys are available.
+Run the infrastructure deployment script. It deploys in two stages to avoid a first-deployment race with the OCR Function host key, then generates `.deployment\health-model-details.json` for the Function App package deployment.
 
 ```powershell
 az account set --subscription <subscription-id>
-Set-Location <repo-root>\src\infra
-az deployment sub create --name expenseflow-demo-infra --location northeurope --template-file main.subscription.bicep --parameters main.subscription.bicepparam updateOcrFunctionKeySecret=false
-az deployment sub create --name expenseflow-demo-keys --location northeurope --template-file main.subscription.bicep --parameters main.subscription.bicepparam updateOcrFunctionKeySecret=true
+Set-Location <repo-root>
+.\scripts\Deploy-Infra.ps1 -Location northeurope
 ```
 
 Grant package upload access if needed:
@@ -44,15 +43,6 @@ $resourceGroupName = "<resource-group-name>"
 ### Deploy Function Apps
 Use the storage-package deployment script; do not use `az functionapp deployment source config-zip` for the restricted baseline.
 
-Generate the Health Model annotation map from Bicep deployment outputs after infra deployment, or whenever Function App or Health Model entity mappings change:
-
-```powershell
-Set-Location <repo-root>
-.\scripts\Discover-HealthModelDeploymentAnnotations.ps1 -ResourceGroupName <resource-group-name>
-```
-
-If the script cannot identify the right recent subscription deployment, pass `-SubscriptionDeploymentName`.
-
 ```powershell
 Set-Location <repo-root>
 .\scripts\Deploy-FunctionPackages.ps1 -ResourceGroupName <resource-group-name>
@@ -64,11 +54,11 @@ To reuse already-built packages from `%TEMP%\expenseflow-function-packages`:
 .\scripts\Deploy-FunctionPackages.ps1 -ResourceGroupName <resource-group-name> -SkipBuild
 ```
 
-The deploy script discovers the storage account and Function App names from the resource group, uploads each package as `released-package.zip`, restarts each app, syncs triggers, and prints the discovered functions.
+The deploy script reads the package storage account from `.deployment\health-model-details.json`, discovers the Function App names from the resource group, uploads each package as `released-package.zip`, restarts each app, syncs triggers, and prints the discovered functions. Pass `-StorageAccountName` to override the generated value.
 
 If package upload access is missing, pass `-EnsurePackageUploadAccess` to have the script assign the required storage data role to the signed-in Azure CLI user before uploading packages. The signed-in user must have role assignment permissions on the storage account.
 
-After each Function App package deployment, the deploy script reads `.deployment\health-model-annotations.json` and uses the current Azure CLI user's management-plane bearer token to add a Health Model `Deployment` data annotation to matching Function App entities. Override the annotation values with `-DeploymentVersion`, `-DeploymentRollout`, and optional `-DeploymentAnnotationDescription`; use `-HealthModelAnnotationMapPath` to read a different generated map.
+After each Function App package deployment, the deploy script reads `.deployment\health-model-details.json` and uses the current Azure CLI user's management-plane bearer token to add a Health Model `Deployment` data annotation to matching Function App entities. Override the annotation values with `-DeploymentVersion`, `-DeploymentRollout`, and optional `-DeploymentAnnotationDescription`; use `-HealthModelDetailsMapPath` to read a different generated map.
 
 ### Configure runtime behavior
 The demo behavior is controlled by Function App application settings. Infrastructure deployment applies safe defaults, and you can either change those defaults in the infrastructure template before redeploying or adjust the deployed Function App configuration for temporary demo scenarios. Restart the affected Function App after changing settings so the isolated worker process reloads configuration.
