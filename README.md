@@ -72,20 +72,33 @@ After each Function App package deployment, the deploy script reads `.deployment
 ### Configure runtime behavior
 The demo behavior is controlled by Function App application settings. Infrastructure deployment applies safe defaults, and you can either change those defaults in the infrastructure template before redeploying or adjust the deployed Function App configuration for temporary demo scenarios. Restart the affected Function App after changing settings so the isolated worker process reloads configuration.
 
-| Behavior | Function App | Default | How to use it |
-| --- | --- | --- | --- |
-| OCR failure rate | OCR | `0` | Decimal probability from `0` to `1`; use `0.25` for roughly one failed OCR call in four, or `1` to force every OCR call to fail. |
-| OCR response delay | OCR | `500` ms | Adds artificial latency before the OCR response; increase it to make downstream processing slower and make backlogs easier to observe. |
-| External OCR provider heartbeat | OCR | enabled, every 10 seconds | Attempts to report the configured external provider health to the Health Model on each timer run. |
-| External OCR provider report probability | OCR | `0.35` | Decimal probability from `0` to `1`; use `1` to send on every heartbeat during a demo. |
-| External OCR provider health | OCR | `Healthy` | Health state sent by the reporter. Valid values are `Healthy`, `Degraded`, `Unhealthy`, and `Unknown`. |
-| External OCR provider report expiry | OCR | `2` minutes | If no new report arrives before expiry, the external provider entity becomes `Unknown`; expiry does not make it `Unhealthy`. |
-| Worker processing delay | Worker | `1000` ms | Adds artificial latency before each queued expense is processed; increase it to grow queue depth without making OCR fail. |
-| Keep-alive submissions | BFF | enabled | Periodically creates synthetic expenses so the environment keeps producing telemetry even when nobody is actively using the API. |
-| Keep-alive interval | BFF | every 30 seconds | Uses the Azure Functions timer schedule format; make it less frequent to reduce background traffic or more frequent to create continuous load. |
-| Keep-alive batch size | BFF | `1` | Controls how many synthetic expenses each keep-alive run creates; increase it to drive more queue and storage activity. |
+| Behavior | Script parameter | Function App | Default | How to use it |
+| --- | --- | --- | --- | --- |
+| OCR failure rate | `-OcrFailureRate` | OCR | `0` | Decimal probability from `0` to `1`; use `0.25` for roughly one failed OCR call in four, or `1` to force every OCR call to fail. |
+| OCR response delay | `-OcrResponseDelayMs` | OCR | `500` ms | Adds artificial latency before the OCR response; increase it to make downstream processing slower and make backlogs easier to observe. |
+| External OCR provider heartbeat | `-ExternalOcrProviderHeartbeatEnabled`, `-ExternalOcrProviderHeartbeatSchedule` | OCR | enabled, every 10 seconds | Attempts to report the configured external provider health to the Health Model on each timer run. |
+| External OCR provider report probability | `-ExternalOcrProviderReportProbability` | OCR | `0.35` | Decimal probability from `0` to `1`; use `1` to send on every heartbeat during a demo. |
+| External OCR provider health | `-ExternalOcrProviderHealth` | OCR | `Healthy` | Health state sent by the reporter. Valid values are `Healthy`, `Degraded`, `Unhealthy`, and `Unknown`. |
+| External OCR provider report expiry | `-ExternalOcrProviderReportExpiryMinutes` | OCR | `2` minutes | If no new report arrives before expiry, the external provider entity becomes `Unknown`; expiry does not make it `Unhealthy`. |
+| Worker processing delay | `-WorkerProcessingDelayMs` | Worker | `1000` ms | Adds artificial latency before each queued expense is processed; increase it to grow queue depth without making OCR fail. |
+| Keep-alive submissions | `-KeepAliveEnabled` | BFF | enabled | Periodically creates synthetic expenses so the environment keeps producing telemetry even when nobody is actively using the API. |
+| Keep-alive interval | `-KeepAliveSchedule` | BFF | every 30 seconds | Uses the Azure Functions timer schedule format; make it less frequent to reduce background traffic or more frequent to create continuous load. |
+| Keep-alive batch size | `-KeepAliveBatchSize` | BFF | `1` | Controls how many synthetic expenses each keep-alive run creates; increase it to drive more queue and storage activity. |
 
-For a one-off demo change, discover the target Function App and set the relevant app setting with Azure CLI:
+Use the helper script for demo changes. It maps each behavior to the correct Function App and setting, applies the values, and restarts only the affected apps:
+
+```powershell
+Set-Location <repo-root>
+.\scripts\Set-DemoBehavior.ps1 -ResourceGroupName <resource-group-name> -OcrFailureRate 0.25 -WorkerProcessingDelayMs 5000
+```
+
+Combine any parameters in a single call; the script updates each Function App once:
+
+```powershell
+.\scripts\Set-DemoBehavior.ps1 -ResourceGroupName <resource-group-name> -ExternalOcrProviderHealth Unhealthy -ExternalOcrProviderReportProbability 1 -KeepAliveBatchSize 5
+```
+
+To change a setting the script does not cover, set it directly with Azure CLI:
 
 ```powershell
 $resourceGroupName = "<resource-group-name>"
@@ -94,7 +107,7 @@ az functionapp config appsettings set --resource-group $resourceGroupName --name
 az functionapp restart --resource-group $resourceGroupName --name $ocrFunctionAppName
 ```
 
-Use the same pattern for the BFF and Worker settings. Optional numeric and Boolean settings fall back to their defaults when omitted or invalid, so prefer simple values such as whole milliseconds, `true`/`false`, and decimal probabilities.
+Optional numeric and Boolean settings fall back to their defaults when omitted or invalid, so prefer simple values such as whole milliseconds, `true`/`false`, and decimal probabilities.
 
 ### Verify deployment
 ```powershell
@@ -194,20 +207,16 @@ OCR response:
 ### External health reporter demo
 The OCR Function simulates an external OCR provider that reports its own health through the Health Model `ingestHealthReport` API. A dedicated user-assigned managed identity is attached to the OCR Function and granted `Contributor` on the Health Model. The reporter targets the `OCR provider (external)` entity and sends the health state configured in `ExpenseFlow__ExternalOcrProviderHealth`.
 
-The reporter does not inspect OCR failures or automatically choose `Unhealthy`. To force an unhealthy report for a demo, set the report probability to `1`, set the state to `Unhealthy`, and restart the OCR Function App:
+The reporter does not inspect OCR failures or automatically choose `Unhealthy`. To force an unhealthy report for a demo, set the report probability to `1` and the state to `Unhealthy`:
 
 ```powershell
-$resourceGroupName = "<resource-group-name>"
-$ocrFunctionAppName = az functionapp list --resource-group $resourceGroupName --query "[?tags.component=='ocr'].name | [0]" --output tsv
-az functionapp config appsettings set --resource-group $resourceGroupName --name $ocrFunctionAppName --settings ExpenseFlow__ExternalOcrProviderHeartbeatSendProbability=1 ExpenseFlow__ExternalOcrProviderHealth=Unhealthy
-az functionapp restart --resource-group $resourceGroupName --name $ocrFunctionAppName
+.\scripts\Set-DemoBehavior.ps1 -ResourceGroupName <resource-group-name> -ExternalOcrProviderReportProbability 1 -ExternalOcrProviderHealth Unhealthy
 ```
 
 Restore healthy probabilistic reporting after the demo:
 
 ```powershell
-az functionapp config appsettings set --resource-group $resourceGroupName --name $ocrFunctionAppName --settings ExpenseFlow__ExternalOcrProviderHeartbeatSendProbability=0.35 ExpenseFlow__ExternalOcrProviderHealth=Healthy
-az functionapp restart --resource-group $resourceGroupName --name $ocrFunctionAppName
+.\scripts\Set-DemoBehavior.ps1 -ResourceGroupName <resource-group-name> -ExternalOcrProviderReportProbability 0.35 -ExternalOcrProviderHealth Healthy
 ```
 
 With the default 10-second schedule and `0.35` probability, some successful timer invocations intentionally skip sending a report. If reports stop for more than two minutes, the entity changes to `Unknown` when the last report expires.
