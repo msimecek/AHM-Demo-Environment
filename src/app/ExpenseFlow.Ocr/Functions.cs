@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ExpenseFlow.Ocr;
 
-public sealed class Functions(BlobContainerClient receiptContainer, ILogger<Functions> logger)
+public sealed class Functions(BlobContainerClient receiptContainer, ExternalHealthReporter externalHealthReporter, ILogger<Functions> logger)
 {
     [Function(nameof(ExtractReceipt))]
     public async Task<HttpResponseData> ExtractReceipt(
@@ -50,5 +50,26 @@ public sealed class Functions(BlobContainerClient receiptContainer, ILogger<Func
         var response = request.CreateResponse(System.Net.HttpStatusCode.OK);
         await response.WriteAsJsonAsync(result, cancellationToken);
         return response;
+    }
+
+    [Function(nameof(ExternalOcrProviderHeartbeat))]
+    public async Task ExternalOcrProviderHeartbeat(
+        [TimerTrigger("%ExternalOcrProviderHeartbeatSchedule%")] TimerInfo timer,
+        CancellationToken cancellationToken)
+    {
+        var options = OcrOptions.FromEnvironment();
+        if (!options.ExternalOcrProviderHeartbeatEnabled)
+        {
+            logger.LogInformation("External OCR provider heartbeat fired but is disabled.");
+            return;
+        }
+
+        if (Random.Shared.NextDouble() > options.ExternalOcrProviderHeartbeatSendProbability)
+        {
+            logger.LogInformation("External OCR provider skipped heartbeat report.");
+            return;
+        }
+
+        await externalHealthReporter.ReportAsync(options, cancellationToken);
     }
 }

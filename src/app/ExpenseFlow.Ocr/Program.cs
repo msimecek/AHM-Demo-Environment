@@ -13,6 +13,8 @@ var host = new HostBuilder()
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
         services.AddSingleton<TokenCredential, DefaultAzureCredential>();
+        services.AddSingleton<HttpClient>();
+        services.AddSingleton<ExternalHealthReporter>();
         services.AddSingleton(sp =>
         {
             var options = OcrOptions.FromEnvironment();

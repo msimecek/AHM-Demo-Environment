@@ -54,6 +54,12 @@ param workerAppRoleName string
 @description('Application Insights role name for the OCR Function App.')
 param ocrAppRoleName string
 
+@description('Entity name used for the external OCR provider.')
+param externalOcrProviderEntityName string = 'external-ocr-provider'
+
+@description('Signal name used for externally reported OCR provider availability.')
+param externalOcrProviderSignalName string = 'external-ocr-provider-availability'
+
 resource healthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' = {
   name: healthModelName
   location: location
@@ -555,6 +561,29 @@ AppRequests
   dependsOn: [
     authenticationSettingSystemAssigned
     signalDefinitionAspHttpQueueLength
+  ]
+}
+
+resource entityExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+  parent: healthModel
+  name: externalOcrProviderEntityName
+  properties: {
+    canvasPosition: {
+      x: 720
+      y: 770
+    }
+    displayName: 'OCR provider (external)'
+    icon: {
+      iconName: 'Generic'
+    }
+    impact: 'Standard'
+    tags: {
+      component: 'external-ocr-provider'
+      signalName: externalOcrProviderSignalName
+    }
+  }
+  dependsOn: [
+    authenticationSettingSystemAssigned
   ]
 }
 
@@ -1311,6 +1340,19 @@ resource relationshipOcrToOcrPlan 'Microsoft.CloudHealth/healthmodels/relationsh
     entityKeepAliveFunc
     entitySubmitExpenses
     entityExpenseFlowApplication
+  ]
+}
+
+resource relationshipOcrToExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+  parent: healthModel
+  name: '63733205-1535-44ff-8962-6bad4e0aa0ee-${externalOcrProviderEntityName}'
+  properties: {
+    childEntityName: externalOcrProviderEntityName
+    parentEntityName: '63733205-1535-44ff-8962-6bad4e0aa0ee'
+  }
+  dependsOn: [
+    entityOcr
+    entityExternalOcrProvider
   ]
 }
 

@@ -83,6 +83,9 @@ var workerFunctionAppName = take('func-${baseName}-worker-${uniqueSuffix}', 60)
 var ocrFunctionAppName = take('func-${baseName}-ocr-${uniqueSuffix}', 60)
 var ocrFunctionKeySecretName = 'ocr-function-key'
 var healthModelResourceName = empty(healthModelName) ? take('hm-${baseName}-${uniqueSuffix}', 90) : healthModelName
+var externalOcrProviderEntityName = 'external-ocr-provider'
+var externalOcrProviderSignalName = 'external-ocr-provider-availability'
+var externalHealthReporterIdentityName = take('id-${baseName}-${location}-external-health-${uniqueSuffix}', 128)
 var policyConfigAllRegions = enableDemoPolicyConfigRegion ? concat(policyConfigRegions, [demoPolicyConfigRegion]) : policyConfigRegions
 
 var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
@@ -94,6 +97,7 @@ var cosmosSqlDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
 var monitoringReaderRoleId = '43d0d8ad-25c7-4714-9337-8ba259a9fe05'
+var contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 var readerRoleId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 var logAnalyticsReaderRoleId = '73c42c96-874c-492b-b04d-ab87d138a893'
 
@@ -265,6 +269,18 @@ module observability 'modules/observability.bicep' = {
   }
 }
 
+resource externalHealthReporterIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
+  name: externalHealthReporterIdentityName
+  location: location
+  tags: union(commonTags, {
+    component: 'external-health-reporter'
+    region: location
+  })
+  properties: {
+    isolationScope: 'Regional'
+  }
+}
+
 resource bffFunctionPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: bffFunctionPlanName
   location: location
@@ -386,6 +402,9 @@ module ocrFunction 'modules/function-app.bicep' = {
     packageContainerUri: storage.outputs.ocrPackageContainerUri
     deploymentClientIpRanges: deploymentClientIpRanges
     restrictNetworkAccess: restrictNetworkAccess
+    userAssignedIdentityResourceIds: [
+      externalHealthReporterIdentity.id
+    ]
     tags: union(commonTags, {
       component: 'ocr'
     })
@@ -397,6 +416,42 @@ module ocrFunction 'modules/function-app.bicep' = {
       {
         name: 'ExpenseFlow__OcrFailureRate'
         value: '0'
+      }
+      {
+        name: 'ExpenseFlow__ExternalOcrProviderHeartbeatEnabled'
+        value: 'true'
+      }
+      {
+        name: 'ExternalOcrProviderHeartbeatSchedule'
+        value: '*/10 * * * * *'
+      }
+      {
+        name: 'ExpenseFlow__ExternalOcrProviderHeartbeatSendProbability'
+        value: '0.35'
+      }
+      {
+        name: 'ExpenseFlow__ExternalOcrProviderHealth'
+        value: 'Healthy'
+      }
+      {
+        name: 'ExpenseFlow__ExternalOcrProviderHealthReportExpiresInMinutes'
+        value: '2'
+      }
+      {
+        name: 'ExpenseFlow__HealthModelResourceId'
+        value: resourceId('Microsoft.CloudHealth/healthmodels', healthModelResourceName)
+      }
+      {
+        name: 'ExpenseFlow__ExternalOcrProviderEntityName'
+        value: externalOcrProviderEntityName
+      }
+      {
+        name: 'ExpenseFlow__ExternalOcrProviderSignalName'
+        value: externalOcrProviderSignalName
+      }
+      {
+        name: 'ExpenseFlow__ExternalHealthReporterClientId'
+        value: externalHealthReporterIdentity.properties.clientId
       }
     ])
   }
@@ -642,6 +697,8 @@ module healthModel 'modules/health-model.bicep' = {
   params: {
     location: location
     healthModelName: healthModelResourceName
+    externalOcrProviderEntityName: externalOcrProviderEntityName
+    externalOcrProviderSignalName: externalOcrProviderSignalName
     tags: commonTags
     storageAccountResourceId: storage.outputs.id
     secondaryStorageAccountResourceId: secondaryStorage.outputs.id
@@ -996,6 +1053,23 @@ resource healthModelLogAnalyticsReaderRole 'Microsoft.Authorization/roleAssignme
     principalId: healthModel.outputs.healthModelPrincipalId
     principalType: 'ServicePrincipal'
   }
+}
+
+resource healthModelResource 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' existing = {
+  name: healthModelResourceName
+}
+
+resource externalHealthReporterHealthModelRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(healthModelResource.id, externalHealthReporterIdentity.id, contributorRoleId)
+  scope: healthModelResource
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleId)
+    principalId: externalHealthReporterIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    healthModel
+  ]
 }
 
 resource bffCosmosRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = {

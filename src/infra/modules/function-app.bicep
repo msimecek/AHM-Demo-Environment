@@ -22,6 +22,9 @@ param deploymentClientIpRanges array = []
 @description('Tags applied to the Function App.')
 param tags object
 
+@description('Optional user-assigned managed identities attached to the Function App.')
+param userAssignedIdentityResourceIds array = []
+
 @description('When true, disables public network access except explicit deployment client IP ranges.')
 param restrictNetworkAccess bool = true
 
@@ -39,8 +42,11 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
   location: location
   tags: tags
   kind: 'functionapp,linux'
-  identity: {
+  identity: empty(userAssignedIdentityResourceIds) ? {
     type: 'SystemAssigned'
+  } : {
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: toObject(userAssignedIdentityResourceIds, id => id, id => {})
   }
   properties: {
     serverFarmId: planId
