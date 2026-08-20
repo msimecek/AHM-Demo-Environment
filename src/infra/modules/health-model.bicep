@@ -88,7 +88,7 @@ resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discovery
     authenticationSetting: 'systemassigned'
     discoverRelationships: 'Enabled'
     addRecommendedSignals: 'Enabled'
-    addResourceHealthSignal: 'Enabled'
+    addResourceHealthSignal: 'Disabled'
     specification: {
       kind: 'ResourceGraphQuery'
       resourceGraphQuery: 'resources | where type =~ \'microsoft.appconfiguration/configurationstores\' and tags[\'component\'] =~ \'policy-config\''
