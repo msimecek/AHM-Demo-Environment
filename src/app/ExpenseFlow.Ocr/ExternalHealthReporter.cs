@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Extensions.Logging;
@@ -28,13 +29,13 @@ public sealed class ExternalHealthReporter(HttpClient httpClient, ILogger<Extern
         var requestUri = BuildIngestUri(options);
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = JsonContent.Create(new
+            Content = new StringContent(JsonSerializer.Serialize(new
             {
                 signalName = options.ExternalOcrProviderSignalName,
                 healthState,
                 expiresInMinutes = options.ExternalOcrProviderHealthReportExpiresInMinutes,
                 additionalContext = "External OCR provider heartbeat reported by the OCR Function demo adapter."
-            })
+            }), Encoding.UTF8, "application/json")
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
 
