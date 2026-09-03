@@ -27,7 +27,9 @@ resource store 'Microsoft.AppConfiguration/configurationStores@2024-05-01' = {
     name: skuName
   }
   tags: tags
-  properties: {}
+  properties: {
+    disableLocalAuth: true
+  }
 }
 
 output id string = store.id
