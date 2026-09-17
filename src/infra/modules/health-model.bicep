@@ -622,7 +622,7 @@ resource entityManagementLayer 'Microsoft.CloudHealth/healthmodels/entities@2026
       }
     }
     canvasPosition: {
-      x: 910
+      x: 1120
       y: 370
     }
     displayName: 'Management layer'
@@ -1139,8 +1139,8 @@ resource entityKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/entities@2026-0
   name: 'f41a6637-9904-401b-8aba-6fc70b8226c8'
   properties: {
     canvasPosition: {
-      x: 910
-      y: 760
+      x: 1120
+      y: 770
     }
     displayName: 'Keep alive func'
     icon: {
@@ -1232,8 +1232,8 @@ resource entityPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/entit
   name: 'regional-policy-config-model'
   properties: {
     canvasPosition: {
-      x: 240
-      y: 0
+      x: 850
+      y: 770
     }
     displayName: 'Regional policy configuration'
     icon: {
@@ -1654,7 +1654,7 @@ resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHeal
   parent: healthModel
   name: 'baa13677-d203-46f1-8b32-3075bdb68fc2'
   properties: {
-    childEntityName: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
+    childEntityName: entityExpenseFlowApplication.name
     parentEntityName: healthModelName
   }
   dependsOn: [
@@ -1678,16 +1678,13 @@ resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHeal
   ]
 }
 
-resource relationshipExpenseFlowApplicationToPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipProcessingLayerToPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '${healthModelName}-regional-policy-config-model'
   properties: {
     childEntityName: entityPolicyConfigHealthModel.name
-    parentEntityName: healthModelName
+    parentEntityName: entityProcessingLayer.name
   }
-  dependsOn: [
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
