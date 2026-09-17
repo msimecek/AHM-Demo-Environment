@@ -109,6 +109,10 @@ resource entityPolicyConfigDiscovery 'Microsoft.CloudHealth/healthmodels/entitie
   parent: policyConfigHealthModel
   name: 'regional-policy-config'
   properties: {
+    canvasPosition: {
+      x: 365
+      y: 25
+    }
     displayName: 'Regional configuration stores'
     icon: {
       iconName: 'Generic'
