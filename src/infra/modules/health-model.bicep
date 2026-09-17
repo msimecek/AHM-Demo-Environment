@@ -1262,425 +1262,149 @@ resource relationshipWorkerToWorkerPlan 'Microsoft.CloudHealth/healthmodels/rela
   parent: healthModel
   name: '0beddc06-19ae-4061-b104-0152c3e5dd8d-af71d029-9644-49f1-a6bf-fcb5d3f12766'
   properties: {
-    childEntityName: 'af71d029-9644-49f1-a6bf-fcb5d3f12766'
-    parentEntityName: '0beddc06-19ae-4061-b104-0152c3e5dd8d'
+    childEntityName: entityWorkerPlan.name
+    parentEntityName: entityWorker.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipApiLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '1806a2dc-d1e6-4172-a939-6776db839f03'
   properties: {
-    childEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
-    parentEntityName: '5ccf2422-068d-49b9-9586-559368a77a46'
+    childEntityName: entityDataLayer.name
+    parentEntityName: entityApiLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipProcessingLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '1f4ff3f5-4dab-48db-8bab-aaa03eac411c'
   properties: {
-    childEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
-    parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
+    childEntityName: entityDataLayer.name
+    parentEntityName: entityProcessingLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipApiLayerToBff 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '5ccf2422-068d-49b9-9586-559368a77a46-7896a212-ac11-4b4a-a81d-99e3fd666b8d'
   properties: {
-    childEntityName: '7896a212-ac11-4b4a-a81d-99e3fd666b8d'
-    parentEntityName: '5ccf2422-068d-49b9-9586-559368a77a46'
+    childEntityName: entityBff.name
+    parentEntityName: entityApiLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipOcrToOcrPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '63733205-1535-44ff-8962-6bad4e0aa0ee-936421d2-c8cd-4186-a2f2-07147209c051'
   properties: {
-    childEntityName: '936421d2-c8cd-4186-a2f2-07147209c051'
-    parentEntityName: '63733205-1535-44ff-8962-6bad4e0aa0ee'
+    childEntityName: entityOcrPlan.name
+    parentEntityName: entityOcr.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipOcrToExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
-  name: '63733205-1535-44ff-8962-6bad4e0aa0ee-${externalOcrProviderEntityName}'
+  name: '63733205-1535-44ff-8962-6bad4e0aa0ee-external-ocr-provider'
   properties: {
-    childEntityName: externalOcrProviderEntityName
-    parentEntityName: '63733205-1535-44ff-8962-6bad4e0aa0ee'
+    childEntityName: entityExternalOcrProvider.name
+    parentEntityName: entityOcr.name
   }
-  dependsOn: [
-    entityOcr
-    entityExternalOcrProvider
-  ]
 }
 
 resource relationshipManagementLayerToKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '72dbfe59-ddc0-4b40-85c4-16ac53262023-f41a6637-9904-401b-8aba-6fc70b8226c8'
   properties: {
-    childEntityName: 'f41a6637-9904-401b-8aba-6fc70b8226c8'
-    parentEntityName: '72dbfe59-ddc0-4b40-85c4-16ac53262023'
+    childEntityName: entityKeepAliveFunc.name
+    parentEntityName: entityManagementLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipBffToBffPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '7896a212-ac11-4b4a-a81d-99e3fd666b8d-1e6f2190-c66c-4496-a5b5-3287512b59b7'
   properties: {
-    childEntityName: '1e6f2190-c66c-4496-a5b5-3287512b59b7'
-    parentEntityName: '7896a212-ac11-4b4a-a81d-99e3fd666b8d'
+    childEntityName: entityBffPlan.name
+    parentEntityName: entityBff.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipSubmitExpensesToApiLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '78cd80dc-9d8d-4587-b8b3-7da830d6016e'
   properties: {
-    childEntityName: '5ccf2422-068d-49b9-9586-559368a77a46'
-    parentEntityName: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
+    childEntityName: entityApiLayer.name
+    parentEntityName: entitySubmitExpenses.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipDataLayerToServiceBus 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '7adbe2d7-f53b-4440-8e35-18fbe004e6a1'
   properties: {
-    childEntityName: 'ddcb4be3-b81d-4b99-8de9-529ee191671a'
-    parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
+    childEntityName: entityServiceBus.name
+    parentEntityName: entityDataLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipSubmitExpensesToProcessingLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '8187fa36-8443-4c99-9183-53ac5483b128'
   properties: {
-    childEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
-    parentEntityName: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
+    childEntityName: entityProcessingLayer.name
+    parentEntityName: entitySubmitExpenses.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipDataLayerToStorageAccounts 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-063cfc66-b335-41b2-a983-27d31c1978c1'
   properties: {
-    childEntityName: '063cfc66-b335-41b2-a983-27d31c1978c1'
-    parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
+    childEntityName: entityStorageAccounts.name
+    parentEntityName: entityDataLayer.name
   }
-  dependsOn: [
-    entityStorageAccounts
-    entityDataLayer
-  ]
 }
 
 resource relationshipStorageAccountsToPrimaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '063cfc66-b335-41b2-a983-27d31c1978c1-09a5fd7d-a108-4b2d-a377-6d06266e18fd'
   properties: {
-    childEntityName: '09a5fd7d-a108-4b2d-a377-6d06266e18fd'
-    parentEntityName: '063cfc66-b335-41b2-a983-27d31c1978c1'
+    childEntityName: entityPrimaryStorage.name
+    parentEntityName: entityStorageAccounts.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityStorageAccounts
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipStorageAccountsToSecondaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '063cfc66-b335-41b2-a983-27d31c1978c1-f2a40f5e-52b2-48a2-96ce-33f4d884825d'
   properties: {
-    childEntityName: 'f2a40f5e-52b2-48a2-96ce-33f4d884825d'
-    parentEntityName: '063cfc66-b335-41b2-a983-27d31c1978c1'
+    childEntityName: entitySecondaryStorage.name
+    parentEntityName: entityStorageAccounts.name
   }
-  dependsOn: [
-    entitySecondaryStorage
-    entityStorageAccounts
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipDataLayerToCosmos 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-e69e768b-0355-49c6-9451-b94ced3046c8'
   properties: {
-    childEntityName: 'e69e768b-0355-49c6-9451-b94ced3046c8'
-    parentEntityName: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
+    childEntityName: entityCosmos.name
+    parentEntityName: entityDataLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: 'baa13677-d203-46f1-8b32-3075bdb68fc2'
   properties: {
-    childEntityName: entityExpenseFlowApplication.name
-    parentEntityName: healthModelName
+    childEntityName: entitySubmitExpenses.name
+    parentEntityName: entityExpenseFlowApplication.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipProcessingLayerToPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
-  name: '${healthModelName}-regional-policy-config-model'
+  name: '19e2e9ca-aede-48c7-8588-34df79e89c41'
   properties: {
     childEntityName: entityPolicyConfigHealthModel.name
     parentEntityName: entityProcessingLayer.name
@@ -1691,84 +1415,27 @@ resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels
   parent: healthModel
   name: 'ccae2486-2116-4734-adc0-7c238458b6fb-0beddc06-19ae-4061-b104-0152c3e5dd8d'
   properties: {
-    childEntityName: '0beddc06-19ae-4061-b104-0152c3e5dd8d'
-    parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
+    childEntityName: entityWorker.name
+    parentEntityName: entityProcessingLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipProcessingLayerToKeyVault 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: 'cd8497f5-688e-40a9-92d4-b308896c63bd'
   properties: {
-    childEntityName: 'cd59fe0e-0ccf-4471-959b-9995cec4f206'
-    parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
+    childEntityName: entityKeyVault.name
+    parentEntityName: entityProcessingLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 resource relationshipProcessingLayerToOcr 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: 'd41eb4e7-736d-4b3b-b2c6-4e6380644bee'
   properties: {
-    childEntityName: '63733205-1535-44ff-8962-6bad4e0aa0ee'
-    parentEntityName: 'ccae2486-2116-4734-adc0-7c238458b6fb'
+    childEntityName: entityOcr.name
+    parentEntityName: entityProcessingLayer.name
   }
-  dependsOn: [
-    entityPrimaryStorage
-    entityWorker
-    entityBffPlan
-    entityApiLayer
-    entityOcr
-    entityManagementLayer
-    entityBff
-    entityDataLayer
-    entityOcrPlan
-    entityWorkerPlan
-    entityProcessingLayer
-    entityKeyVault
-    entityServiceBus
-    entityCosmos
-    entityKeepAliveFunc
-    entitySubmitExpenses
-    entityExpenseFlowApplication
-  ]
 }
 
 output healthModelResourceId string = healthModel.id
