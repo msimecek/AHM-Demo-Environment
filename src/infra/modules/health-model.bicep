@@ -285,7 +285,7 @@ resource entityPrimaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-
   properties: {
     canvasPosition: {
       x: -440
-      y: 940
+      y: 970
     }
     displayName: 'Primary Storage'
     icon: {
@@ -341,7 +341,7 @@ resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@202
   properties: {
     canvasPosition: {
       x: -210
-      y: 940
+      y: 970
     }
     displayName: 'Secondary Storage'
     icon: {
