@@ -224,7 +224,7 @@ Restore healthy probabilistic reporting after the demo:
 With the default 10-second schedule and `0.35` probability, some successful timer invocations intentionally skip sending a report. If reports stop for more than two minutes, the entity changes to `Unknown` when the last report expires.
 
 ### Health model auto-discovery demo
-The health model includes a scoped Azure Resource Graph discovery rule (`regional-policy-config`) that automatically adds **App Configuration** stores tagged `component=policy-config` as monitored entities. These stores represent per-region ExpenseFlow expense policy and are provisioned as a fleet (one per Azure region) separate from the hand-authored entities.
+The deployment includes a dedicated regional policy configuration health model. Its scoped Azure Resource Graph discovery rule (`regional-policy-config`) automatically adds **App Configuration** stores tagged `component=policy-config` as monitored entities. The main ExpenseFlow health model references this dedicated model as one Azure resource entity, so discovered stores stay outside the hand-authored application model.
 
 Deployment provisions three regional stores by default. Discovery runs about every five minutes, so newly added or removed tagged stores are reflected automatically with recommended signals and an Azure Resource Health signal.
 

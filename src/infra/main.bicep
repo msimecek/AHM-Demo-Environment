@@ -83,6 +83,7 @@ var workerFunctionAppName = take('func-${baseName}-worker-${uniqueSuffix}', 60)
 var ocrFunctionAppName = take('func-${baseName}-ocr-${uniqueSuffix}', 60)
 var ocrFunctionKeySecretName = 'ocr-function-key'
 var healthModelResourceName = empty(healthModelName) ? take('hm-${baseName}-${uniqueSuffix}', 90) : healthModelName
+var policyConfigHealthModelResourceName = take('hm-${baseName}-config-${uniqueSuffix}', 44)
 var externalOcrProviderEntityName = 'external-ocr-provider'
 var externalOcrProviderSignalName = 'external-ocr-provider-availability'
 var externalHealthReporterIdentityName = take('id-${baseName}-${location}-external-health-${uniqueSuffix}', 128)
@@ -699,6 +700,7 @@ module healthModel 'modules/health-model.bicep' = {
     healthModelName: healthModelResourceName
     externalOcrProviderEntityName: externalOcrProviderEntityName
     externalOcrProviderSignalName: externalOcrProviderSignalName
+    policyConfigHealthModelName: policyConfigHealthModelResourceName
     tags: commonTags
     storageAccountResourceId: storage.outputs.id
     secondaryStorageAccountResourceId: secondaryStorage.outputs.id
@@ -1045,6 +1047,24 @@ resource healthModelReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-
   }
 }
 
+resource policyConfigHealthModelMonitoringReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, policyConfigHealthModelResourceName, monitoringReaderRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringReaderRoleId)
+    principalId: healthModel.outputs.policyConfigHealthModelPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource policyConfigHealthModelReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, policyConfigHealthModelResourceName, readerRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', readerRoleId)
+    principalId: healthModel.outputs.policyConfigHealthModelPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource healthModelLogAnalyticsReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(logAnalyticsWorkspaceResource.id, healthModelResourceName, logAnalyticsReaderRoleId)
   scope: logAnalyticsWorkspaceResource
@@ -1101,6 +1121,7 @@ output cosmosEndpoint string = cosmos.outputs.endpoint
 output logAnalyticsWorkspaceName string = observability.outputs.workspaceName
 output applicationInsightsName string = observability.outputs.applicationInsightsName
 output healthModelResourceId string = healthModel.outputs.healthModelResourceId
+output policyConfigHealthModelResourceId string = healthModel.outputs.policyConfigHealthModelResourceId
 output healthModelDetailsMap object = {
   apiVersion: '2026-05-01-preview'
   subscriptionId: subscription().subscriptionId

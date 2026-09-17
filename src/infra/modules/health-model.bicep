@@ -60,6 +60,9 @@ param externalOcrProviderEntityName string = 'external-ocr-provider'
 @description('Signal name used for externally reported OCR provider availability.')
 param externalOcrProviderSignalName string = 'external-ocr-provider-availability'
 
+@description('Name of the health model that contains regional policy configuration discovery.')
+param policyConfigHealthModelName string
+
 resource healthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' = {
   name: healthModelName
   location: location
@@ -80,8 +83,30 @@ resource authenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels
   }
 }
 
+resource policyConfigHealthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' = {
+  name: policyConfigHealthModelName
+  location: location
+  tags: union(tags, {
+    component: 'policy-config'
+  })
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
+}
+
+resource policyConfigAuthenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels/authenticationsettings@2026-05-01-preview' = {
+  parent: policyConfigHealthModel
+  name: 'systemassigned'
+  properties: {
+    authenticationKind: 'ManagedIdentity'
+    displayName: 'SystemAssigned'
+    managedIdentityName: 'SystemAssigned'
+  }
+}
+
 resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discoveryrules@2026-05-01-preview' = {
-  parent: healthModel
+  parent: policyConfigHealthModel
   name: 'regional-policy-config'
   properties: {
     displayName: 'Regional configuration stores'
@@ -95,10 +120,9 @@ resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discovery
     }
   }
   dependsOn: [
-    authenticationSettingSystemAssigned
+    policyConfigAuthenticationSettingSystemAssigned
   ]
 }
-
 
 resource signalDefinitionAspHttpQueueLength 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
   parent: healthModel
@@ -1203,6 +1227,37 @@ resource entityExpenseFlowApplication 'Microsoft.CloudHealth/healthmodels/entiti
   ]
 }
 
+resource entityPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+  parent: healthModel
+  name: 'regional-policy-config-model'
+  properties: {
+    canvasPosition: {
+      x: 240
+      y: 0
+    }
+    displayName: 'Regional policy configuration'
+    icon: {
+      iconName: 'Resource'
+    }
+    impact: 'Standard'
+    signalGroups: {
+      azureResource: {
+        authenticationSetting: 'systemassigned'
+        azureResourceId: policyConfigHealthModel.id
+        azureResourceKind: 'microsoft.cloudhealth/healthmodels'
+        resourceHealth: {
+          enabled: 'Disabled'
+        }
+        signals: []
+      }
+    }
+    tags: {}
+  }
+  dependsOn: [
+    authenticationSettingSystemAssigned
+  ]
+}
+
 resource relationshipWorkerToWorkerPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: '0beddc06-19ae-4061-b104-0152c3e5dd8d-af71d029-9644-49f1-a6bf-fcb5d3f12766'
@@ -1623,6 +1678,18 @@ resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHeal
   ]
 }
 
+resource relationshipExpenseFlowApplicationToPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+  parent: healthModel
+  name: '${healthModelName}-regional-policy-config-model'
+  properties: {
+    childEntityName: entityPolicyConfigHealthModel.name
+    parentEntityName: healthModelName
+  }
+  dependsOn: [
+    entityExpenseFlowApplication
+  ]
+}
+
 resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
   parent: healthModel
   name: 'ccae2486-2116-4734-adc0-7c238458b6fb-0beddc06-19ae-4061-b104-0152c3e5dd8d'
@@ -1709,6 +1776,8 @@ resource relationshipProcessingLayerToOcr 'Microsoft.CloudHealth/healthmodels/re
 
 output healthModelResourceId string = healthModel.id
 output healthModelPrincipalId string = healthModel.identity.principalId
+output policyConfigHealthModelResourceId string = policyConfigHealthModel.id
+output policyConfigHealthModelPrincipalId string = policyConfigHealthModel.identity.principalId
 output bffDeploymentAnnotationEntityNames array = [
   entityBff.name
   entityKeepAliveFunc.name

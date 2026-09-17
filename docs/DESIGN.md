@@ -61,10 +61,10 @@ The model includes an `OCR provider (external)` entity for demonstrating applica
 - **Live demo lever:** set the reporting probability to `1` and change the configured state to force a deterministic health transition and propagation through the model.
 
 ### Auto-discovery (regional policy configuration)
-Alongside the hand-authored entities, the health model includes an **Azure Resource Graph discovery rule** (`regional-policy-config`) that demonstrates dynamic, scoped auto-discovery without touching the manually authored model.
+The deployment creates a dedicated **regional policy configuration health model** with an Azure Resource Graph discovery rule (`regional-policy-config`). The main ExpenseFlow health model represents this dedicated model as one Azure resource entity, which keeps discovery-generated entities outside the hand-authored application model.
 
 - **What is discovered:** a fleet of **Azure App Configuration** stores, each representing a region's ExpenseFlow expense policy (approval thresholds, per-diem limits, VAT handling, allowed currencies). The Functions would load the caller's regional store at runtime to decide how to process an expense.
-- **Scope:** the rule's ARG query matches only stores tagged `component=policy-config`, so it never overlaps with the hand-authored entities. Discovered entities attach to a discovery-generated node, keeping the manual model pristine.
+- **Scope:** the rule's ARG query matches only stores tagged `component=policy-config`. Discovered entities stay in the dedicated model, and the main model contains only its reference entity.
 - **Signals:** recommended signals and an Azure Resource Health availability signal are added automatically to every discovered store.
 - **Dynamic behavior:** discovery runs every ~5 minutes, so adding or removing a tagged store is reflected automatically. Each store is deployed to its own Azure region (Free tier, one per region) to match the regional narrative.
 - **Live demo lever:** setting `enableDemoPolicyConfigRegion = true` provisions an extra regional store that the model auto-discovers within a few minutes, showing discovery reacting to a growing environment.
