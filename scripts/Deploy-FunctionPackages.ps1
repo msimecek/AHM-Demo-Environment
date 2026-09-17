@@ -255,7 +255,7 @@ function Add-HealthModelDeploymentAnnotation {
     }
 
     $escapedEntityName = [Uri]::EscapeDataString($EntityName)
-    $url = "https://management.azure.com$ModelRoot/entities/$escapedEntityName/addDataAnnotation?api-version=2026-05-01-preview"
+    $url = "https://management.azure.com$ModelRoot/entities/$escapedEntityName/addDataAnnotation?api-version=2026-09-01-preview"
     Invoke-RestMethod `
         -Method Post `
         -Uri $url `

@@ -64,7 +64,7 @@ The model includes an `OCR provider (external)` entity for demonstrating applica
 The deployment creates a dedicated **regional policy configuration health model** with an Azure Resource Graph discovery rule (`regional-policy-config`). The main ExpenseFlow health model represents this dedicated model as one Azure resource entity, which keeps discovery-generated entities outside the hand-authored application model.
 
 - **What is discovered:** a fleet of **Azure App Configuration** stores, each representing a region's ExpenseFlow expense policy (approval thresholds, per-diem limits, VAT handling, allowed currencies). The Functions would load the caller's regional store at runtime to decide how to process an expense.
-- **Scope:** the rule's ARG query matches only stores tagged `component=policy-config`. Discovered entities stay in the dedicated model, and the main model contains only its reference entity.
+- **Scope:** the rule's ARG query matches only stores tagged `component=policy-config`. A pre-created `regional-policy-config` generic entity is connected to the dedicated model root and acts as the discovery parent. The main model contains only its reference entity.
 - **Signals:** recommended signals and an Azure Resource Health availability signal are added automatically to every discovered store.
 - **Dynamic behavior:** discovery runs every ~5 minutes, so adding or removing a tagged store is reflected automatically. Each store is deployed to its own Azure region (Free tier, one per region) to match the regional narrative.
 - **Live demo lever:** setting `enableDemoPolicyConfigRegion = true` provisions an extra regional store that the model auto-discovers within a few minutes, showing discovery reacting to a growing environment.

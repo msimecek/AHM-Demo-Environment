@@ -56,7 +56,7 @@ public sealed class ExternalHealthReporter(HttpClient httpClient, ILogger<Extern
     {
         var healthModelResourceId = options.HealthModelResourceId.TrimEnd('/');
         var entityName = Uri.EscapeDataString(options.ExternalOcrProviderEntityName);
-        return new Uri($"https://management.azure.com{healthModelResourceId}/entities/{entityName}/ingestHealthReport?api-version=2026-05-01-preview");
+        return new Uri($"https://management.azure.com{healthModelResourceId}/entities/{entityName}/ingestHealthReport?api-version=2026-09-01-preview");
     }
 
     private static string NormalizeHealthState(string healthState)

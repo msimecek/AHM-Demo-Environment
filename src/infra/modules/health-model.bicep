@@ -63,7 +63,7 @@ param externalOcrProviderSignalName string = 'external-ocr-provider-availability
 @description('Name of the health model that contains regional policy configuration discovery.')
 param policyConfigHealthModelName string
 
-resource healthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' = {
+resource healthModel 'Microsoft.CloudHealth/healthmodels@2026-09-01-preview' = {
   name: healthModelName
   location: location
   tags: tags
@@ -73,7 +73,7 @@ resource healthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' = {
   properties: {}
 }
 
-resource authenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels/authenticationsettings@2026-05-01-preview' = {
+resource authenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels/authenticationsettings@2026-09-01-preview' = {
   parent: healthModel
   name: 'systemassigned'
   properties: {
@@ -83,7 +83,7 @@ resource authenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels
   }
 }
 
-resource policyConfigHealthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' = {
+resource policyConfigHealthModel 'Microsoft.CloudHealth/healthmodels@2026-09-01-preview' = {
   name: policyConfigHealthModelName
   location: location
   tags: union(tags, {
@@ -95,7 +95,7 @@ resource policyConfigHealthModel 'Microsoft.CloudHealth/healthmodels@2026-05-01-
   properties: {}
 }
 
-resource policyConfigAuthenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels/authenticationsettings@2026-05-01-preview' = {
+resource policyConfigAuthenticationSettingSystemAssigned 'Microsoft.CloudHealth/healthmodels/authenticationsettings@2026-09-01-preview' = {
   parent: policyConfigHealthModel
   name: 'systemassigned'
   properties: {
@@ -105,7 +105,29 @@ resource policyConfigAuthenticationSettingSystemAssigned 'Microsoft.CloudHealth/
   }
 }
 
-resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discoveryrules@2026-05-01-preview' = {
+resource entityPolicyConfigDiscovery 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
+  parent: policyConfigHealthModel
+  name: 'regional-policy-config'
+  properties: {
+    displayName: 'Regional configuration stores'
+    icon: {
+      iconName: 'Generic'
+    }
+    impact: 'Standard'
+    tags: {}
+  }
+}
+
+resource relationshipPolicyConfigRootToDiscovery 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
+  parent: policyConfigHealthModel
+  name: '3ebef224-6435-4d97-b372-a02dc4c9f83f'
+  properties: {
+    childEntityName: entityPolicyConfigDiscovery.name
+    parentEntityName: policyConfigHealthModel.name
+  }
+}
+
+resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discoveryrules@2026-09-01-preview' = {
   parent: policyConfigHealthModel
   name: 'regional-policy-config'
   properties: {
@@ -121,10 +143,11 @@ resource discoveryRulePolicyConfig 'Microsoft.CloudHealth/healthmodels/discovery
   }
   dependsOn: [
     policyConfigAuthenticationSettingSystemAssigned
+    relationshipPolicyConfigRootToDiscovery
   ]
 }
 
-resource signalDefinitionAspHttpQueueLength 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+resource signalDefinitionAspHttpQueueLength 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-09-01-preview' = {
   parent: healthModel
   name: 'b1f31305-a9d4-4205-b98a-c8a387680602'
   properties: {
@@ -149,7 +172,7 @@ resource signalDefinitionAspHttpQueueLength 'Microsoft.CloudHealth/healthmodels/
   }
 }
 
-resource signalDefinitionStorageClientAuthErrors 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+resource signalDefinitionStorageClientAuthErrors 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-09-01-preview' = {
   parent: healthModel
   name: 'b30854b5-c14c-4cb2-8493-ea4f1fe239bf'
   properties: {
@@ -175,7 +198,7 @@ resource signalDefinitionStorageClientAuthErrors 'Microsoft.CloudHealth/healthmo
   }
 }
 
-resource signalDefinitionStorageAuthorizationErrors 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+resource signalDefinitionStorageAuthorizationErrors 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-09-01-preview' = {
   parent: healthModel
   name: '63ad959b-39f1-4deb-be18-2d9eafcc1ba4'
   properties: {
@@ -201,7 +224,7 @@ resource signalDefinitionStorageAuthorizationErrors 'Microsoft.CloudHealth/healt
   }
 }
 
-resource signalDefinitionStorageSuccessE2ELatency 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+resource signalDefinitionStorageSuccessE2ELatency 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-09-01-preview' = {
   parent: healthModel
   name: '808a5d79-5c9c-4b28-8217-05019e40acfd'
   properties: {
@@ -226,7 +249,7 @@ resource signalDefinitionStorageSuccessE2ELatency 'Microsoft.CloudHealth/healthm
   }
 }
 
-resource signalDefinitionStorageAvailability 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-05-01-preview' = {
+resource signalDefinitionStorageAvailability 'Microsoft.CloudHealth/healthmodels/signaldefinitions@2026-09-01-preview' = {
   parent: healthModel
   name: '7de1a349-dd82-4c4d-9215-232165d8a8ca'
   properties: {
@@ -252,7 +275,7 @@ resource signalDefinitionStorageAvailability 'Microsoft.CloudHealth/healthmodels
 }
 
 
-resource entityPrimaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityPrimaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '09a5fd7d-a108-4b2d-a377-6d06266e18fd'
   properties: {
@@ -308,7 +331,7 @@ resource entityPrimaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-
   ]
 }
 
-resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'f2a40f5e-52b2-48a2-96ce-33f4d884825d'
   properties: {
@@ -364,7 +387,7 @@ resource entitySecondaryStorage 'Microsoft.CloudHealth/healthmodels/entities@202
   ]
 }
 
-resource entityWorker 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityWorker 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '0beddc06-19ae-4061-b104-0152c3e5dd8d'
   properties: {
@@ -454,7 +477,7 @@ AppRequests
   ]
 }
 
-resource entityBffPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityBffPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '1e6f2190-c66c-4496-a5b5-3287512b59b7'
   properties: {
@@ -492,7 +515,7 @@ resource entityBffPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
   ]
 }
 
-resource entityApiLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityApiLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '5ccf2422-068d-49b9-9586-559368a77a46'
   properties: {
@@ -519,7 +542,7 @@ resource entityApiLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-
   ]
 }
 
-resource entityOcr 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityOcr 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '63733205-1535-44ff-8962-6bad4e0aa0ee'
   properties: {
@@ -588,7 +611,7 @@ AppRequests
   ]
 }
 
-resource entityExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: externalOcrProviderEntityName
   properties: {
@@ -611,7 +634,7 @@ resource entityExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/entities@
   ]
 }
 
-resource entityManagementLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityManagementLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '72dbfe59-ddc0-4b40-85c4-16ac53262023'
   properties: {
@@ -638,7 +661,7 @@ resource entityManagementLayer 'Microsoft.CloudHealth/healthmodels/entities@2026
   ]
 }
 
-resource entityBff 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityBff 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '7896a212-ac11-4b4a-a81d-99e3fd666b8d'
   properties: {
@@ -698,7 +721,7 @@ AppExceptions
   ]
 }
 
-resource entityDataLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityDataLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '839e8a4f-5b08-467c-aed8-56bd07f72db1'
   properties: {
@@ -719,7 +742,7 @@ resource entityDataLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01
   ]
 }
 
-resource entityStorageAccounts 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityStorageAccounts 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '063cfc66-b335-41b2-a983-27d31c1978c1'
   properties: {
@@ -749,7 +772,7 @@ resource entityStorageAccounts 'Microsoft.CloudHealth/healthmodels/entities@2026
   ]
 }
 
-resource entityOcrPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityOcrPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: '936421d2-c8cd-4186-a2f2-07147209c051'
   properties: {
@@ -787,7 +810,7 @@ resource entityOcrPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-p
   ]
 }
 
-resource entityWorkerPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityWorkerPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'af71d029-9644-49f1-a6bf-fcb5d3f12766'
   properties: {
@@ -825,7 +848,7 @@ resource entityWorkerPlan 'Microsoft.CloudHealth/healthmodels/entities@2026-05-0
   ]
 }
 
-resource entityProcessingLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityProcessingLayer 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'ccae2486-2116-4734-adc0-7c238458b6fb'
   properties: {
@@ -852,7 +875,7 @@ resource entityProcessingLayer 'Microsoft.CloudHealth/healthmodels/entities@2026
   ]
 }
 
-resource entityKeyVault 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityKeyVault 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'cd59fe0e-0ccf-4471-959b-9995cec4f206'
   properties: {
@@ -926,7 +949,7 @@ resource entityKeyVault 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-
   ]
 }
 
-resource entityServiceBus 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityServiceBus 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'ddcb4be3-b81d-4b99-8de9-529ee191671a'
   properties: {
@@ -1017,7 +1040,7 @@ resource entityServiceBus 'Microsoft.CloudHealth/healthmodels/entities@2026-05-0
   ]
 }
 
-resource entityCosmos 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityCosmos 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'e69e768b-0355-49c6-9451-b94ced3046c8'
   properties: {
@@ -1134,7 +1157,7 @@ resource entityCosmos 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-pr
   ]
 }
 
-resource entityKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'f41a6637-9904-401b-8aba-6fc70b8226c8'
   properties: {
@@ -1187,7 +1210,7 @@ resource entityKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/entities@2026-0
   ]
 }
 
-resource entitySubmitExpenses 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entitySubmitExpenses 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'fc3e84a3-7c3a-4aff-b148-e764d3c71276'
   properties: {
@@ -1208,7 +1231,7 @@ resource entitySubmitExpenses 'Microsoft.CloudHealth/healthmodels/entities@2026-
   ]
 }
 
-resource entityExpenseFlowApplication 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityExpenseFlowApplication 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: healthModelName
   properties: {
@@ -1227,7 +1250,7 @@ resource entityExpenseFlowApplication 'Microsoft.CloudHealth/healthmodels/entiti
   ]
 }
 
-resource entityPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/entities@2026-05-01-preview' = {
+resource entityPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'regional-policy-config-model'
   properties: {
@@ -1258,7 +1281,7 @@ resource entityPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/entit
   ]
 }
 
-resource relationshipWorkerToWorkerPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipWorkerToWorkerPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '0beddc06-19ae-4061-b104-0152c3e5dd8d-af71d029-9644-49f1-a6bf-fcb5d3f12766'
   properties: {
@@ -1267,7 +1290,7 @@ resource relationshipWorkerToWorkerPlan 'Microsoft.CloudHealth/healthmodels/rela
   }
 }
 
-resource relationshipApiLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipApiLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '1806a2dc-d1e6-4172-a939-6776db839f03'
   properties: {
@@ -1276,7 +1299,7 @@ resource relationshipApiLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/rel
   }
 }
 
-resource relationshipProcessingLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipProcessingLayerToDataLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '1f4ff3f5-4dab-48db-8bab-aaa03eac411c'
   properties: {
@@ -1285,7 +1308,7 @@ resource relationshipProcessingLayerToDataLayer 'Microsoft.CloudHealth/healthmod
   }
 }
 
-resource relationshipApiLayerToBff 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipApiLayerToBff 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '5ccf2422-068d-49b9-9586-559368a77a46-7896a212-ac11-4b4a-a81d-99e3fd666b8d'
   properties: {
@@ -1294,7 +1317,7 @@ resource relationshipApiLayerToBff 'Microsoft.CloudHealth/healthmodels/relations
   }
 }
 
-resource relationshipOcrToOcrPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipOcrToOcrPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '63733205-1535-44ff-8962-6bad4e0aa0ee-936421d2-c8cd-4186-a2f2-07147209c051'
   properties: {
@@ -1303,7 +1326,7 @@ resource relationshipOcrToOcrPlan 'Microsoft.CloudHealth/healthmodels/relationsh
   }
 }
 
-resource relationshipOcrToExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipOcrToExternalOcrProvider 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '63733205-1535-44ff-8962-6bad4e0aa0ee-external-ocr-provider'
   properties: {
@@ -1312,7 +1335,7 @@ resource relationshipOcrToExternalOcrProvider 'Microsoft.CloudHealth/healthmodel
   }
 }
 
-resource relationshipManagementLayerToKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipManagementLayerToKeepAliveFunc 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '72dbfe59-ddc0-4b40-85c4-16ac53262023-f41a6637-9904-401b-8aba-6fc70b8226c8'
   properties: {
@@ -1321,7 +1344,7 @@ resource relationshipManagementLayerToKeepAliveFunc 'Microsoft.CloudHealth/healt
   }
 }
 
-resource relationshipBffToBffPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipBffToBffPlan 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '7896a212-ac11-4b4a-a81d-99e3fd666b8d-1e6f2190-c66c-4496-a5b5-3287512b59b7'
   properties: {
@@ -1330,7 +1353,7 @@ resource relationshipBffToBffPlan 'Microsoft.CloudHealth/healthmodels/relationsh
   }
 }
 
-resource relationshipSubmitExpensesToApiLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipSubmitExpensesToApiLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '78cd80dc-9d8d-4587-b8b3-7da830d6016e'
   properties: {
@@ -1339,7 +1362,7 @@ resource relationshipSubmitExpensesToApiLayer 'Microsoft.CloudHealth/healthmodel
   }
 }
 
-resource relationshipDataLayerToServiceBus 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipDataLayerToServiceBus 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '7adbe2d7-f53b-4440-8e35-18fbe004e6a1'
   properties: {
@@ -1348,7 +1371,7 @@ resource relationshipDataLayerToServiceBus 'Microsoft.CloudHealth/healthmodels/r
   }
 }
 
-resource relationshipSubmitExpensesToProcessingLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipSubmitExpensesToProcessingLayer 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '8187fa36-8443-4c99-9183-53ac5483b128'
   properties: {
@@ -1357,7 +1380,7 @@ resource relationshipSubmitExpensesToProcessingLayer 'Microsoft.CloudHealth/heal
   }
 }
 
-resource relationshipDataLayerToStorageAccounts 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipDataLayerToStorageAccounts 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-063cfc66-b335-41b2-a983-27d31c1978c1'
   properties: {
@@ -1366,7 +1389,7 @@ resource relationshipDataLayerToStorageAccounts 'Microsoft.CloudHealth/healthmod
   }
 }
 
-resource relationshipStorageAccountsToPrimaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipStorageAccountsToPrimaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '063cfc66-b335-41b2-a983-27d31c1978c1-09a5fd7d-a108-4b2d-a377-6d06266e18fd'
   properties: {
@@ -1375,7 +1398,7 @@ resource relationshipStorageAccountsToPrimaryStorage 'Microsoft.CloudHealth/heal
   }
 }
 
-resource relationshipStorageAccountsToSecondaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipStorageAccountsToSecondaryStorage 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '063cfc66-b335-41b2-a983-27d31c1978c1-f2a40f5e-52b2-48a2-96ce-33f4d884825d'
   properties: {
@@ -1384,7 +1407,7 @@ resource relationshipStorageAccountsToSecondaryStorage 'Microsoft.CloudHealth/he
   }
 }
 
-resource relationshipDataLayerToCosmos 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipDataLayerToCosmos 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '839e8a4f-5b08-467c-aed8-56bd07f72db1-e69e768b-0355-49c6-9451-b94ced3046c8'
   properties: {
@@ -1393,7 +1416,7 @@ resource relationshipDataLayerToCosmos 'Microsoft.CloudHealth/healthmodels/relat
   }
 }
 
-resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: 'baa13677-d203-46f1-8b32-3075bdb68fc2'
   properties: {
@@ -1402,7 +1425,7 @@ resource relationshipExpenseFlowApplicationToSubmitExpenses 'Microsoft.CloudHeal
   }
 }
 
-resource relationshipProcessingLayerToPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipProcessingLayerToPolicyConfigHealthModel 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '19e2e9ca-aede-48c7-8588-34df79e89c41'
   properties: {
@@ -1411,7 +1434,7 @@ resource relationshipProcessingLayerToPolicyConfigHealthModel 'Microsoft.CloudHe
   }
 }
 
-resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: 'ccae2486-2116-4734-adc0-7c238458b6fb-0beddc06-19ae-4061-b104-0152c3e5dd8d'
   properties: {
@@ -1420,7 +1443,7 @@ resource relationshipProcessingLayerToWorker 'Microsoft.CloudHealth/healthmodels
   }
 }
 
-resource relationshipProcessingLayerToKeyVault 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipProcessingLayerToKeyVault 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: 'cd8497f5-688e-40a9-92d4-b308896c63bd'
   properties: {
@@ -1429,7 +1452,7 @@ resource relationshipProcessingLayerToKeyVault 'Microsoft.CloudHealth/healthmode
   }
 }
 
-resource relationshipProcessingLayerToOcr 'Microsoft.CloudHealth/healthmodels/relationships@2026-05-01-preview' = {
+resource relationshipProcessingLayerToOcr 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: 'd41eb4e7-736d-4b3b-b2c6-4e6380644bee'
   properties: {

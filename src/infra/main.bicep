@@ -1075,7 +1075,7 @@ resource healthModelLogAnalyticsReaderRole 'Microsoft.Authorization/roleAssignme
   }
 }
 
-resource healthModelResource 'Microsoft.CloudHealth/healthmodels@2026-05-01-preview' existing = {
+resource healthModelResource 'Microsoft.CloudHealth/healthmodels@2026-09-01-preview' existing = {
   name: healthModelResourceName
 }
 
@@ -1123,7 +1123,7 @@ output applicationInsightsName string = observability.outputs.applicationInsight
 output healthModelResourceId string = healthModel.outputs.healthModelResourceId
 output policyConfigHealthModelResourceId string = healthModel.outputs.policyConfigHealthModelResourceId
 output healthModelDetailsMap object = {
-  apiVersion: '2026-05-01-preview'
+  apiVersion: '2026-09-01-preview'
   subscriptionId: subscription().subscriptionId
   resourceGroupName: resourceGroup().name
   storageAccountName: storage.outputs.name
