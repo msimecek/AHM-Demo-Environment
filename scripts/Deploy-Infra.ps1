@@ -64,3 +64,4 @@ if ($resourceGroupNames.Count -ne 1) {
     -SubscriptionDeploymentName $KeysDeploymentName
 
 Write-Host 'Infrastructure deployment complete.'
+Write-Host "Resource group: $($resourceGroupNames[0])"

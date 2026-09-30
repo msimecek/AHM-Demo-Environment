@@ -46,6 +46,8 @@ Set-Location <repo-root>
 .\scripts\Deploy-Infra.ps1 -Location northeurope
 ```
 
+When deployment completes, the script prints `Resource group: <resource-group-name>`. Use this name for the package deployment commands below.
+
 Grant package upload access if needed:
 
 ```powershell
