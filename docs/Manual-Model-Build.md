@@ -27,8 +27,9 @@ Set-Location <repo-root>
 .\scripts\Deploy-FunctionPackages.ps1 -ResourceGroupName <resource-group-name>
 ```
 
-If the package upload fails on access, run the second script once with
-`-EnsurePackageUploadAccess`. See the [README](../README.md) for all script options.
+The deployment machine must reach each Function App's SCM endpoint. Storage
+public access is not required. See the [README](../README.md) for network
+requirements and all script options.
 
 Wait about ten minutes after the package deployment. The model needs telemetry.
 

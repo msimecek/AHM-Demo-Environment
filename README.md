@@ -28,9 +28,9 @@ To build the same health model by hand during a live demo, use [docs/Manual-Mode
 ## How to use
 
 ### Prerequisites
-- PowerShell, Azure CLI, .NET SDK 10.
+- PowerShell 7 or later, Azure CLI, .NET SDK 10.
 - Azure CLI signed in to the **target subscription**.
-- The deploying identity (typically end user - you) must have ARM rights for the resource group and `Storage Blob Data Contributor` on the demo storage account.
+- The deploying identity (typically end user - you) must have ARM rights to deploy the infrastructure and Function App code. Package deployment does not require Storage data-plane permissions for this identity.
 - If running from a dev machine while `restrictNetworkAccess = true`, add the machine's **outbound public IP to the deployment parameters**.
 
 ### Deploy infrastructure
@@ -48,15 +48,8 @@ Set-Location <repo-root>
 
 When deployment completes, the script prints `Resource group: <resource-group-name>`. Use this name for the package deployment commands below.
 
-Grant package upload access if needed:
-
-```powershell
-$resourceGroupName = "<resource-group-name>"
-.\scripts\Deploy-FunctionPackages.ps1 -ResourceGroupName $resourceGroupName -EnsurePackageUploadAccess
-```
-
 ### Deploy Function Apps
-Use the storage-package deployment script; do not use `az functionapp deployment source config-zip` for the restricted baseline.
+Use the package deployment script. It deploys through each Function App's SCM endpoint with `az functionapp deployment source config-zip`, which selects the supported deployment method for Flex Consumption.
 
 ```powershell
 Set-Location <repo-root>
@@ -69,9 +62,13 @@ To reuse already-built packages from `%TEMP%\expenseflow-function-packages`:
 .\scripts\Deploy-FunctionPackages.ps1 -ResourceGroupName <resource-group-name> -SkipBuild
 ```
 
-The deploy script reads the package storage account from `.deployment\health-model-details.json`, discovers the Function App names from the resource group, uploads each package as `released-package.zip`, restarts each app, syncs triggers, and prints the discovered functions. Pass `-StorageAccountName` to override the generated value.
+The script discovers the Function App names, checks that all SCM endpoints are reachable, builds all three apps, and validates each ZIP before deployment. Each package must contain `host.json` and the expected compiled function metadata at the ZIP root. `-SkipBuild` skips publishing, but still validates the existing packages.
 
-If package upload access is missing, pass `-EnsurePackageUploadAccess` to have the script assign the required storage data role to the signed-in Azure CLI user before uploading packages. The signed-in user must have role assignment permissions on the storage account.
+Azure CLI deploys the packages and handles trigger synchronization. The script then checks that each app is running and that its expected functions are registered and enabled. It waits up to 50 seconds for these checks before reporting a validation failure. Health Model annotations are added only after an app passes deployment validation.
+
+The deployment machine must reach the SCM endpoints. For public SCM access, Function App public network access must be enabled and SCM access rules must allow the machine's outbound IP. If public access is disabled, use a connected private network with the required DNS resolution.
+
+The script does not access Storage directly, grant Storage roles, or change network settings. The existing storage account and deployment containers remain: Flex Consumption uses them internally through the Function Apps' managed identities and VNet integration. Storage public network access can stay disabled.
 
 After each Function App package deployment, the deploy script reads `.deployment\health-model-details.json` and uses the current Azure CLI user's management-plane bearer token to add a Health Model `Deployment` data annotation to matching Function App entities. Override the annotation values with `-DeploymentVersion`, `-DeploymentRollout`, and optional `-DeploymentAnnotationDescription`; use `-HealthModelDetailsMapPath` to read a different generated map.
 

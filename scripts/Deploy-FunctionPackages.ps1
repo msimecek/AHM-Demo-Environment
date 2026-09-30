@@ -1,7 +1,8 @@
+#requires -Version 7.0
+
 param(
     [Parameter(Mandatory = $true)]
     [string] $ResourceGroupName,
-    [string] $StorageAccountName,
     [string] $BffFunctionAppName,
     [string] $WorkerFunctionAppName,
     [string] $OcrFunctionAppName,
@@ -11,13 +12,11 @@ param(
     [string] $DeploymentVersion = "v$((Get-Date).ToString('yyyy.M.d'))",
     [string] $DeploymentRollout = (Get-Date).ToString('yyyyMMddHHmmss'),
     [string] $DeploymentAnnotationDescription,
-    [switch] $EnsurePackageUploadAccess,
     [switch] $SkipHealthModelAnnotation,
     [switch] $SkipBuild
 )
 
 $ErrorActionPreference = 'Stop'
-$packageUploadRoleName = 'Storage Blob Data Contributor'
 
 function Get-RequiredValue {
     param(
@@ -42,110 +41,120 @@ function Assert-NativeCommandSucceeded {
     }
 }
 
-function Get-StorageAccountResourceId {
+function Assert-ScmEndpointAvailable {
     param(
         [Parameter(Mandatory = $true)]
         [string] $ResourceGroupName,
 
         [Parameter(Mandatory = $true)]
-        [string] $StorageAccountName
-    )
-
-    $storageAccountId = az storage account show --resource-group $ResourceGroupName --name $StorageAccountName --query id --output tsv
-    Assert-NativeCommandSucceeded 'Storage account resource ID lookup'
-    return Get-RequiredValue $storageAccountId 'storage account resource ID'
-}
-
-function Test-PackageUploadAccess {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $StorageAccountName,
+        [string] $AppName,
 
         [Parameter(Mandatory = $true)]
-        [string] $ContainerName
+        [string] $AccessToken
     )
 
-    $null = az storage container exists `
-        --account-name $StorageAccountName `
-        --name $ContainerName `
-        --auth-mode login `
-        --query exists `
-        --output tsv 2>$null
+    $appId = az functionapp show --resource-group $ResourceGroupName --name $AppName --query id --output tsv
+    Assert-NativeCommandSucceeded "$AppName resource ID lookup"
+    $appId = Get-RequiredValue $appId "$AppName resource ID"
 
-    return $LASTEXITCODE -eq 0
-}
-
-function Grant-PackageUploadRoleToSignedInUser {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $StorageAccountId
-    )
-
-    $account = az account show --output json | ConvertFrom-Json
-    Assert-NativeCommandSucceeded 'Azure account lookup'
-
-    if ($account.user.type -ine 'user') {
-        throw "Automatic package upload role grants require an Azure CLI user sign-in. Current sign-in type is '$($account.user.type)'. Assign '$packageUploadRoleName' on '$StorageAccountId' to the deployment identity, or sign in as a user with role assignment permissions."
+    $hostNamesJson = az rest --method get --url "https://management.azure.com${appId}?api-version=2024-04-01" --query 'properties.enabledHostNames' --output json
+    Assert-NativeCommandSucceeded "$AppName hostname lookup"
+    $scmHostNames = @($hostNamesJson | ConvertFrom-Json | Where-Object { $_ -match '\.scm\.' })
+    if ($scmHostNames.Count -ne 1) {
+        throw "Expected one SCM hostname for '$AppName', but found $($scmHostNames.Count)."
     }
 
-    $userObjectId = az ad signed-in-user show --query id --output tsv
-    Assert-NativeCommandSucceeded 'Signed-in user lookup'
-    $userObjectId = Get-RequiredValue $userObjectId 'signed-in user object ID'
+    $uri = "https://$($scmHostNames[0])/api/deployments"
+    Write-Host "Checking SCM endpoint for $AppName..."
+    $response = Invoke-WebRequest -Uri $uri -Method Get -Headers @{ Authorization = "Bearer $AccessToken" } -SkipHttpErrorCheck -MaximumRedirection 0 -TimeoutSec 30
+    if ($response.StatusCode -ne 200) {
+        throw "SCM endpoint '$uri' returned HTTP $($response.StatusCode). Check deployment permissions, SCM access restrictions, public network access, or private endpoint connectivity and DNS."
+    }
 
-    Write-Host "Granting '$packageUploadRoleName' on $StorageAccountId to signed-in user $userObjectId..."
-    az role assignment create `
-        --assignee-object-id $userObjectId `
-        --assignee-principal-type User `
-        --role $packageUploadRoleName `
-        --scope $StorageAccountId `
-        --output none
-    Assert-NativeCommandSucceeded "'$packageUploadRoleName' role assignment"
+    Write-Host "SCM endpoint is reachable for $AppName."
+    return $appId
 }
 
-function Assert-PackageUploadAccess {
+function Assert-FunctionPackage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+
+        [Parameter(Mandatory = $true)]
+        [string[]] $ExpectedFunctions
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Package not found: $Path"
+    }
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        if ($null -eq $archive.GetEntry('host.json')) {
+            throw "Package '$Path' must contain host.json at the ZIP root."
+        }
+
+        $metadataEntry = $archive.GetEntry('functions.metadata')
+        if ($null -eq $metadataEntry) {
+            throw "Package '$Path' must contain functions.metadata at the ZIP root. Build the .NET Function App before deployment."
+        }
+
+        $reader = [System.IO.StreamReader]::new($metadataEntry.Open())
+        try {
+            $metadata = $reader.ReadToEnd() | ConvertFrom-Json
+        }
+        finally {
+            $reader.Dispose()
+        }
+
+        $missingFunctions = @($ExpectedFunctions | Where-Object { $_ -notin @($metadata.name) })
+        if ($missingFunctions.Count -gt 0) {
+            throw "Package '$Path' is missing expected functions: $($missingFunctions -join ', ')."
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
+function Assert-FunctionDeployment {
     param(
         [Parameter(Mandatory = $true)]
         [string] $ResourceGroupName,
 
         [Parameter(Mandatory = $true)]
-        [string] $StorageAccountName,
+        [string] $AppName,
 
         [Parameter(Mandatory = $true)]
-        [string] $ContainerName,
+        [string] $AppId,
 
-        [switch] $GrantIfMissing
+        [Parameter(Mandatory = $true)]
+        [string[]] $ExpectedFunctions
     )
 
-    Write-Host "Checking package upload access for $StorageAccountName..."
-    az account get-access-token --resource https://storage.azure.com/ --output none | Out-Null
-    Assert-NativeCommandSucceeded 'Azure Storage access token acquisition'
+    $maximumAttempts = 6
+    foreach ($attempt in 1..$maximumAttempts) {
+        $state = az rest --method get --url "https://management.azure.com${AppId}?api-version=2024-04-01" --query 'properties.state' --output tsv
+        Assert-NativeCommandSucceeded "$AppName state lookup"
+        $state = Get-RequiredValue $state "$AppName state"
+        $functionsJson = az functionapp function list --resource-group $ResourceGroupName --name $AppName --output json
+        Assert-NativeCommandSucceeded "$AppName function list"
+        $functions = @($functionsJson | ConvertFrom-Json)
+        $enabledFunctionNames = @($functions | Where-Object { $_.isDisabled -eq $false } | ForEach-Object { ($_.name -split '/')[-1] })
+        $missingFunctions = @($ExpectedFunctions | Where-Object { $_ -notin $enabledFunctionNames })
 
-    if (Test-PackageUploadAccess -StorageAccountName $StorageAccountName -ContainerName $ContainerName) {
-        Write-Host "Package upload access confirmed."
-        return
-    }
-
-    $storageAccountId = Get-StorageAccountResourceId -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName
-
-    if (-not $GrantIfMissing) {
-        throw "Current Azure CLI identity cannot access package containers in storage account '$StorageAccountName'. Assign '$packageUploadRoleName' on '$storageAccountId', or rerun with -EnsurePackageUploadAccess if this identity can create role assignments."
-    }
-
-    Grant-PackageUploadRoleToSignedInUser -StorageAccountId $storageAccountId
-
-    foreach ($attempt in 1..6) {
-        Write-Host "Waiting for package upload access to propagate (attempt $attempt of 6)..."
-        Start-Sleep -Seconds 20
-        az account get-access-token --resource https://storage.azure.com/ --output none | Out-Null
-        Assert-NativeCommandSucceeded 'Azure Storage access token acquisition'
-
-        if (Test-PackageUploadAccess -StorageAccountName $StorageAccountName -ContainerName $ContainerName) {
-            Write-Host "Package upload access confirmed."
+        if ($state -eq 'Running' -and $missingFunctions.Count -eq 0) {
+            Write-Host "Deployment verified for ${AppName}: Running; enabled functions: $($ExpectedFunctions -join ', ')."
             return
+        }
+
+        if ($attempt -lt $maximumAttempts) {
+            Write-Host "Waiting for $AppName to be ready (attempt $attempt of $maximumAttempts): state '$state'; missing or disabled functions: $($missingFunctions -join ', ')."
+            Start-Sleep -Seconds 10
         }
     }
 
-    throw "Assigned '$packageUploadRoleName' on '$storageAccountId', but Azure Storage data-plane access is not available yet. Wait a minute and rerun the deployment."
+    throw "Deployment validation failed for '$AppName': state '$state'; missing or disabled functions: $($missingFunctions -join ', ')."
 }
 
 function Get-ManagementAccessToken {
@@ -269,12 +278,8 @@ function Add-HealthModelDeploymentAnnotation {
 $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $healthModelDetailsMap = $null
 
-if ([string]::IsNullOrWhiteSpace($StorageAccountName) -or -not $SkipHealthModelAnnotation) {
+if (-not $SkipHealthModelAnnotation) {
     $healthModelDetailsMap = Get-HealthModelDetailsMap -Path $HealthModelDetailsMapPath
-}
-
-if ([string]::IsNullOrWhiteSpace($StorageAccountName)) {
-    $StorageAccountName = Get-RequiredValue $healthModelDetailsMap.storageAccountName "storage account name in '$HealthModelDetailsMapPath'"
 }
 
 if ([string]::IsNullOrWhiteSpace($BffFunctionAppName)) {
@@ -292,7 +297,6 @@ if ([string]::IsNullOrWhiteSpace($OcrFunctionAppName)) {
     Assert-NativeCommandSucceeded 'OCR Function App discovery'
 }
 
-$StorageAccountName = Get-RequiredValue $StorageAccountName 'storage account name'
 $BffFunctionAppName = Get-RequiredValue $BffFunctionAppName 'BFF Function App name'
 $WorkerFunctionAppName = Get-RequiredValue $WorkerFunctionAppName 'Worker Function App name'
 $OcrFunctionAppName = Get-RequiredValue $OcrFunctionAppName 'OCR Function App name'
@@ -301,37 +305,43 @@ $apps = @(
     @{
         Name = $BffFunctionAppName
         Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Bff\ExpenseFlow.Bff.csproj'
-        Container = 'function-packages-bff'
+        ExpectedFunctions = @('SubmitSyntheticExpense', 'KeepAlive')
         ArtifactName = 'bff'
     },
     @{
         Name = $WorkerFunctionAppName
         Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Worker\ExpenseFlow.Worker.csproj'
-        Container = 'function-packages-worker'
+        ExpectedFunctions = @('ProcessExpense')
         ArtifactName = 'worker'
     },
     @{
         Name = $OcrFunctionAppName
         Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Ocr\ExpenseFlow.Ocr.csproj'
-        Container = 'function-packages-ocr'
+        ExpectedFunctions = @('ExtractReceipt', 'ExternalOcrProviderHeartbeat')
         ArtifactName = 'ocr'
     }
 )
 
-Assert-PackageUploadAccess `
-    -ResourceGroupName $ResourceGroupName `
-    -StorageAccountName $StorageAccountName `
-    -ContainerName $apps[0].Container `
-    -GrantIfMissing:$EnsurePackageUploadAccess
+$managementAccessToken = Get-ManagementAccessToken
+
+foreach ($app in $apps) {
+    $app.Id = Assert-ScmEndpointAvailable -ResourceGroupName $ResourceGroupName -AppName $app.Name -AccessToken $managementAccessToken
+    if (-not $SkipHealthModelAnnotation) {
+        $app.EntityNames = @(Get-HealthModelAnnotationEntityNames -Map $healthModelDetailsMap -AppName $app.Name -ResourceId $app.Id -Component $app.ArtifactName)
+    }
+}
 
 New-Item -ItemType Directory -Force $ArtifactsPath | Out-Null
+$ArtifactsPath = (Resolve-Path -LiteralPath $ArtifactsPath).Path
 
 if (-not $SkipBuild) {
     foreach ($app in $apps) {
         $publishPath = Join-Path $ArtifactsPath $app.ArtifactName
         $zipPath = Join-Path $ArtifactsPath "$($app.ArtifactName).zip"
 
-        Remove-Item -Recurse -Force $publishPath -ErrorAction SilentlyContinue
+        if (Test-Path -LiteralPath $publishPath) {
+            Remove-Item -LiteralPath $publishPath -Recurse -Force
+        }
         dotnet publish $app.Project --configuration $Configuration --output $publishPath --nologo --verbosity minimal
         Assert-NativeCommandSucceeded "$($app.ArtifactName) publish"
         Compress-Archive -Path "$publishPath\*" -DestinationPath $zipPath -Force
@@ -341,46 +351,27 @@ if (-not $SkipBuild) {
 else {
     foreach ($app in $apps) {
         $zipPath = Join-Path $ArtifactsPath "$($app.ArtifactName).zip"
-        if (-not (Test-Path $zipPath)) {
-            throw "Package not found: $zipPath"
-        }
-
         $app.ZipPath = $zipPath
     }
 }
 
-$managementAccessToken = $null
-
-if (-not $SkipHealthModelAnnotation) {
-    $managementAccessToken = Get-ManagementAccessToken
+foreach ($app in $apps) {
+    Assert-FunctionPackage -Path $app.ZipPath -ExpectedFunctions $app.ExpectedFunctions
 }
 
 foreach ($app in $apps) {
-    Write-Host "Uploading $($app.ZipPath) to $($app.Container)\released-package.zip..."
-    az storage blob upload `
-        --account-name $StorageAccountName `
-        --container-name $app.Container `
-        --name released-package.zip `
-        --file $app.ZipPath `
-        --auth-mode login `
-        --overwrite true `
-        --content-type application/zip `
+    Write-Host "Deploying $($app.ZipPath) to $($app.Name) through SCM..."
+    az functionapp deployment source config-zip `
+        --resource-group $ResourceGroupName `
+        --name $app.Name `
+        --src $app.ZipPath `
+        --build-remote false `
         --output none
-    Assert-NativeCommandSucceeded "$($app.Name) package upload"
-
-    Write-Host "Restarting $($app.Name)..."
-    az functionapp restart --resource-group $ResourceGroupName --name $app.Name --output none
-    Assert-NativeCommandSucceeded "$($app.Name) restart"
-
-    Write-Host "Syncing triggers for $($app.Name)..."
-    $appId = az functionapp show --resource-group $ResourceGroupName --name $app.Name --query id --output tsv
-    Assert-NativeCommandSucceeded "$($app.Name) resource ID lookup"
-    az rest --method post --url "https://management.azure.com$appId/syncfunctiontriggers?api-version=2023-12-01" --output none
-    Assert-NativeCommandSucceeded "$($app.Name) trigger sync"
+    Assert-NativeCommandSucceeded "$($app.Name) package deployment"
+    Assert-FunctionDeployment -ResourceGroupName $ResourceGroupName -AppName $app.Name -AppId $app.Id -ExpectedFunctions $app.ExpectedFunctions
 
     if (-not $SkipHealthModelAnnotation) {
-        $entityNames = Get-HealthModelAnnotationEntityNames -Map $healthModelDetailsMap -AppName $app.Name -ResourceId $appId -Component $app.ArtifactName
-        foreach ($entityName in $entityNames) {
+        foreach ($entityName in $app.EntityNames) {
             Write-Host "Adding deployment annotation to Health Model entity $entityName for $($app.Name)..."
             Add-HealthModelDeploymentAnnotation `
                 -ModelRoot $healthModelDetailsMap.healthModelResourceId `
@@ -393,8 +384,4 @@ foreach ($app in $apps) {
     }
 }
 
-foreach ($app in $apps) {
-    Write-Host "Functions for $($app.Name):"
-    az functionapp function list --resource-group $ResourceGroupName --name $app.Name --query "[].name" --output table
-    Assert-NativeCommandSucceeded "$($app.Name) function list"
-}
+Write-Host "Function App deployment complete. Resource group: $ResourceGroupName"
