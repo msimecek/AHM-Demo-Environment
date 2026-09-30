@@ -36,6 +36,8 @@ To build the same health model by hand during a live demo, use [docs/Manual-Mode
 ### Deploy infrastructure
 Copy the example deployment parameters to a local parameter file before deploying, then set the target resource group, Azure region, deployment client IP ranges, and network access flags for your environment.
 
+The subscription template **creates the target resource group** if it does not exist. If the resource group already exists, it must be in the same Azure region as the `location` configured for that deployment.
+
 Run the infrastructure deployment script. It deploys in two stages to avoid a first-deployment race with the OCR Function host key, then generates `.deployment\health-model-details.json` for the Function App package deployment.
 
 ```powershell
