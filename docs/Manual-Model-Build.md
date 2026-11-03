@@ -83,7 +83,7 @@ ExpenseFlow Application
         │   └── OCR provider (external)
         ├── Key Vault
         └── Data layer
-            ├── Service Bus
+            ├── Event Hubs
             ├── Cosmos
             └── Storage accounts
                 ├── Primary Storage
@@ -251,7 +251,28 @@ AppRequests
 | take 1
 ```
 
-5. Connect: `Processing layer` > `Worker`.
+5. Log Analytics signal 3:
+   - Display name: `Poison handoffs`. Value column: `poisonHandoffs`.
+   - Refresh: 1 minute. Time grain: 10 minutes.
+   - Unhealthy: Greater than `0`. No degraded rule.
+
+```kusto
+AppTraces
+| where TimeGenerated > ago(10m)
+| where AppRoleName == "<worker-function-app-name>"
+| summarize
+    traces=count(),
+    poisonHandoffs=countif(SeverityLevel >= 3 and Message has "was saved to poison queue" and tostring(Properties.QueueName) == "expenses-poison")
+| where traces > 0
+| project poisonHandoffs
+```
+
+This counts recent handoff log events, not unresolved poison messages. With no Worker
+traces, it returns no value rather than a healthy zero. Verify a real handoff log
+before adding the signal. Worker executions alone do not prove expense completion:
+a successful poison handoff also returns success.
+
+6. Connect: `Processing layer` > `Worker`.
 
 ### 5.3 OCR
 
@@ -317,21 +338,24 @@ resource itself.
 
 ## Step 6 — Add the data services
 
-### 6.1 Service Bus
+### 6.1 Event Hubs
 
-1. **Add entity** > **Azure resource** > the Service Bus namespace.
-2. Display name: `Service Bus`. Resource Health: **Enabled**.
-3. Add three metric signals, namespace `microsoft.servicebus/namespaces`:
+1. **Add entity** > **Azure resource** > the Event Hubs namespace.
+2. Display name: `Event Hubs`. Resource Health: **Disabled**.
+3. Check that the namespace exposes numeric samples for each metric below.
+4. Add three metric signals, namespace `microsoft.eventhub/namespaces`. Refresh: 1 minute.
 
 | Display name | Metric | Aggregation | Grain | Degraded | Unhealthy |
 | --- | --- | --- | --- | --- | --- |
-| `CPU` | `NamespaceCpuUsage` | Maximum | 5 min | > `20` % | > `50` % |
-| `Count of active messages in a Queue/Topic.` | `ActiveMessages` | Maximum | 1 min | > `5` | > `10` |
-| `Abandoned Messages` | `AbandonMessage` | Total | 1 min | none | > `0` |
+| `Throttled requests` | `ThrottledRequests` | Total | 5 min | > `0` | > `5` |
+| `Server errors` | `ServerErrors` | Total | 5 min | > `0` | > `5` |
+| `User errors` | `UserErrors` | Total | 5 min | > `0` | > `5` |
 
-4. Connect: `Data layer` > `Service Bus`.
+5. Connect: `Data layer` > `Event Hubs`.
 
-> This is the backlog demo signal. Raise the worker delay later and this entity turns red.
+These are transport failure signals, not backlog signals. Standard Event Hubs does
+not expose the old Service Bus CPU or active-message metrics. Do not subtract
+outgoing events from incoming events to estimate processing backlog.
 
 ### 6.2 Cosmos
 
@@ -513,17 +537,16 @@ their own. You author nothing for them.
 
 Run these after the model is built. Wait one to three minutes for each effect.
 
-Slow the worker and grow the Service Bus backlog:
-
-```powershell
-.\scripts\Set-DemoBehavior.ps1 -ResourceGroupName <resource-group-name> -WorkerProcessingDelayMs 5000 -KeepAliveBatchSize 5
-```
-
-Make OCR fail and turn the `Worker` entity red:
+Make OCR fail and turn the `Worker` entity red. After five failed processing
+attempts, a poison handoff also triggers the `Poison handoffs` signal:
 
 ```powershell
 .\scripts\Set-DemoBehavior.ps1 -ResourceGroupName <resource-group-name> -OcrFailureRate 1
 ```
+
+The poison signal clears when the last handoff leaves its ten-minute window.
+That does not remove or resolve the messages in the poison queue. A slower Worker
+does not, by itself, trigger the Event Hubs transport error signals.
 
 Push an unhealthy external report:
 

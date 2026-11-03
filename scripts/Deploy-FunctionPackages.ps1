@@ -303,10 +303,10 @@ $OcrFunctionAppName = Get-RequiredValue $OcrFunctionAppName 'OCR Function App na
 
 $apps = @(
     @{
-        Name = $BffFunctionAppName
-        Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Bff\ExpenseFlow.Bff.csproj'
-        ExpectedFunctions = @('SubmitSyntheticExpense', 'KeepAlive')
-        ArtifactName = 'bff'
+        Name = $OcrFunctionAppName
+        Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Ocr\ExpenseFlow.Ocr.csproj'
+        ExpectedFunctions = @('ExtractReceipt', 'ExternalOcrProviderHeartbeat')
+        ArtifactName = 'ocr'
     },
     @{
         Name = $WorkerFunctionAppName
@@ -315,10 +315,10 @@ $apps = @(
         ArtifactName = 'worker'
     },
     @{
-        Name = $OcrFunctionAppName
-        Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Ocr\ExpenseFlow.Ocr.csproj'
-        ExpectedFunctions = @('ExtractReceipt', 'ExternalOcrProviderHeartbeat')
-        ArtifactName = 'ocr'
+        Name = $BffFunctionAppName
+        Project = Join-Path $repositoryRoot 'src\app\ExpenseFlow.Bff\ExpenseFlow.Bff.csproj'
+        ExpectedFunctions = @('SubmitSyntheticExpense', 'KeepAlive')
+        ArtifactName = 'bff'
     }
 )
 

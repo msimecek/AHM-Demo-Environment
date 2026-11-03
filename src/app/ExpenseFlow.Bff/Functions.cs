@@ -35,8 +35,8 @@ public sealed class Functions(SubmissionService submissions, ILogger<Functions> 
     }
 
     [Function(nameof(KeepAlive))]
-    [ServiceBusOutput("%ExpensesQueueName%", Connection = "ServiceBusConnection")]
-    public async Task<IReadOnlyList<ExpenseSubmittedMessage>> KeepAlive(
+    [EventHubOutput("%ExpensesEventHubName%", Connection = "EventHubsConnection")]
+    public async Task<ExpenseSubmittedMessage[]> KeepAlive(
         [TimerTrigger("%KeepAliveSchedule%")] TimerInfo timer,
         CancellationToken cancellationToken)
     {
@@ -54,7 +54,7 @@ public sealed class Functions(SubmissionService submissions, ILogger<Functions> 
         }
 
         logger.LogInformation("Keep-alive submitted {Count} synthetic expense(s).", messages.Count);
-        return messages;
+        return messages.ToArray();
     }
 }
 
@@ -63,6 +63,6 @@ public sealed class SubmitSyntheticExpenseOutput
     [HttpResult]
     public HttpResponseData Response { get; init; } = default!;
 
-    [ServiceBusOutput("%ExpensesQueueName%", Connection = "ServiceBusConnection")]
+    [EventHubOutput("%ExpensesEventHubName%", Connection = "EventHubsConnection")]
     public ExpenseSubmittedMessage Message { get; init; } = default!;
 }

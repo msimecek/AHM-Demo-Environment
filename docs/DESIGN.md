@@ -1,14 +1,15 @@
 # Azure Monitor Health Models — Demo Environment Design
 
-ExpenseFlow is a small receipt and expense processing workload used to demonstrate health-model behavior. It accepts synthetic expense submissions, queues them for background processing, calls a simulated OCR service, stores the resulting expense record, and emits real platform telemetry so dependency health and backlog signals can propagate through the model.
+ExpenseFlow is a small receipt and expense processing workload used to demonstrate health-model behavior. It accepts synthetic expense submissions, publishes them to Event Hubs for background processing, calls a simulated OCR service, stores the resulting expense record, and emits real platform telemetry. The health model uses Event Hubs platform metrics and Worker logs to monitor messaging and processing failures.
 
 ## Application Flow
 ```mermaid
 flowchart LR
     user[Demo operator] --> bff[BFF Function]
     bff --> storage[Blob Storage]
-    bff --> queue[Service Bus queue]
+    bff --> queue[Event Hubs]
     queue --> worker[Background Worker Function]
+    worker -->|After five failed attempts| poison[Storage poison queue]
     worker --> storage
     worker --> ocr[OCR Function]
     ocr --> storage
@@ -19,7 +20,6 @@ flowchart LR
     worker --> telemetry
     ocr --> telemetry
     storage --> health[Health Model]
-    queue --> health
     db --> health
     telemetry --> health
     health --> dashboard[Health visualization]
@@ -51,6 +51,13 @@ All resources must comply with a restricted enterprise environment:
 - Authored in Bicep over the provisioned resources.
 - Composed of monitored entities and their relationships, producing aggregated health states for the demo.
 
+### Messaging and processing signals
+The Event Hubs entity remains under `Data layer`. It monitors native `ThrottledRequests`, `ServerErrors`, and `UserErrors` metrics, using five-minute totals. Greater than zero is Degraded; greater than five is Unhealthy. Resource Health is disabled on this entity; its signals use Azure Monitor metrics.
+
+The Worker retains its activity and OCR failure signals. A `Poison handoffs` signal counts its poison-queue error logs over ten minutes and becomes Unhealthy above zero. The query requires Worker traces before returning a value, so absent telemetry does not become a healthy zero. This is a recent-failure signal, not a count of unresolved poison messages. A successful Worker invocation can represent either processing success or a poison handoff.
+
+These signals do not measure queue depth, consumer lag, or end-to-end expense completion. Event Hubs incoming minus outgoing events is not a valid processing backlog calculation.
+
 ### External health reporting
 The model includes an `OCR provider (external)` entity for demonstrating application-supplied health through the `ingestHealthReport` API. The OCR Function hosts a timer-triggered reporter and uses a dedicated user-assigned managed identity with `Contributor` access scoped to the health model.
 
@@ -72,31 +79,31 @@ The deployment creates a dedicated **regional policy configuration health model*
 ## Scenario — ExpenseFlow
 A receipt/expense processing app that exercises the full architecture and gives an intuitive, linear flow to narrate health propagation.
 
-**Flow:** submit expense → queue → background processing → OCR microservice → store results.
+**Flow:** submit expense → event stream → background processing → OCR microservice → store results.
 
 **Components:**
 - **BFF Function** — serves the control panel/web UI: submit expenses, list status.
-- **Background Function** — consumes receipts from the queue, orchestrates processing, writes results.
+- **Background Function** — consumes expense events, orchestrates processing, writes results, and saves failed messages to a poison queue.
 - **OCR Microservice Function** — dedicated extraction service: reads a receipt image, returns structured data.
-- **Service Bus** — receipts submitted via the BFF are queued for the background processor.
-- **Azure Storage** — blob storage for receipt images and a private Storage Queue reserved for future demo signals/events.
+- **Event Hubs** — Standard tier with one throughput unit, two partitions, seven-day retention, and a dedicated worker consumer group. Native Function bindings provide publishing, consumption, checkpoints, and retries.
+- **Azure Storage** — blob storage for receipt images and a private Storage Queue for failed expenses.
 - **Database** — expense records and approval state.
 
-**Health story:** when the OCR microservice degrades, the background processor's backlog grows and queue depth rises, propagating unhealthy state up the model. The external OCR provider can also report an explicit unhealthy state, demonstrating direct health ingestion and propagation. Storage throttling and a stalled background worker are similarly visible.
+**Health story:** when the OCR microservice degrades, retries pause the affected Event Hubs partition until processing succeeds or the failed expense is saved to the poison queue. OCR failures and poison handoffs affect Worker health; native transport errors affect Event Hubs health. Processing lag needs separate telemetry and is not inferred from transport traffic. The external OCR provider can still report an explicit unhealthy state, demonstrating direct health ingestion and propagation.
 
 **Demo levers (control panel):** flood the queue, take down the OCR microservice, throttle storage, and force health-state changes to show propagation.
 
 ## Simulation Model
-Keep the plumbing real, simulate the work. All Functions, Service Bus, Storage, and the database are real and genuinely exercise each other so the health model sees true signals — but receipt/OCR work is faked. No files are uploaded and no real OCR runs.
+Keep the plumbing real, simulate the work. All Functions, Event Hubs, Storage, and the database are real and genuinely exercise each other, but receipt/OCR work is faked. No files are uploaded and no real OCR runs.
 
-- **Synthetic submissions** — the BFF generates a fake expense (random vendor, amount, category) and writes a small JSON "receipt" blob to Storage (trivial, so done for real), then enqueues a message.
-- **Keep-alive timer** — a timer-triggered function in the BFF app periodically creates synthetic submissions so the queue, worker, OCR service, storage, database, and telemetry keep producing signals even when no one is using the control panel.
+- **Synthetic submissions** — the BFF generates a fake expense (random vendor, amount, category) and writes a small JSON "receipt" blob to Storage (trivial, so done for real), then publishes an event.
+- **Keep-alive timer** — a timer-triggered function in the BFF app periodically creates synthetic submissions so Event Hubs, the worker, OCR service, storage, database, and telemetry keep producing signals even when no one is using the control panel.
 - **Simulated OCR** — the microservice waits a configurable delay and returns canned/random structured data; no image processing.
 - **External health reporter** — a timer in the OCR Function probabilistically sends the configured external provider state to the health model; missing reports expire to `Unknown`.
-- **Simulated processing** — the background Function dequeues, waits a configurable interval, calls the OCR service, and writes the expense record to the database. Real I/O, no real compute.
+- **Simulated processing** — the background Function reads an event, waits a configurable interval, calls the OCR service, and writes the expense record to the database. After five failed processing attempts, it saves the message to `expenses-poison`. The checkpoint advances only after processing or poison storage succeeds. Real I/O, no real compute.
 - **Config-driven behavior** — per-component latency, failure rate, and health state come from app settings / control-panel signals, so the flow is fully steerable without real data.
 
-This produces genuine queue depth, storage operations, and failures for the health model while keeping each component simple to implement.
+This produces genuine event traffic, storage operations, and processing failures. Native Event Hubs metrics and poison-handoff logs supply the messaging health signals; consumer lag is not measured.
 
 ## Control Panel UI
 A simple UI to drive the demo:

@@ -1,5 +1,11 @@
 {
   "version": "2.0",
+  "extensions": {
+    "eventHubs": {
+      "maxEventBatchSize": 1,
+      "batchCheckpointFrequency": 1
+    }
+  },
   "logging": {
     "applicationInsights": {
       "samplingSettings": {

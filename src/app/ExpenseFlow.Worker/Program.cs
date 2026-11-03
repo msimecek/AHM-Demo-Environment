@@ -1,6 +1,8 @@
 using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
+using ExpenseFlow.Shared;
 using ExpenseFlow.Worker;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
@@ -15,6 +17,15 @@ var host = new HostBuilder()
         services.ConfigureFunctionsApplicationInsights();
         services.AddHttpClient<OcrClient>();
         services.AddSingleton<TokenCredential, DefaultAzureCredential>();
+        services.AddSingleton(sp =>
+        {
+            var serviceUri = Configuration.Required("ExpenseFlow__StorageQueueServiceUri");
+            var queueName = Configuration.Required("ExpenseFlow__PoisonQueueName");
+            return new QueueClient(new Uri($"{serviceUri.TrimEnd('/')}/{queueName}"), sp.GetRequiredService<TokenCredential>(), new QueueClientOptions
+            {
+                MessageEncoding = QueueMessageEncoding.Base64
+            });
+        });
         services.AddSingleton(sp =>
         {
             var options = ExpenseFlowOptions.FromEnvironment();

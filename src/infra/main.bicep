@@ -69,7 +69,8 @@ var commonTags = union(tags, {
 
 var storageName = take('${take(compactName, 9)}st${uniqueSuffix}', 24)
 var secondaryStorageName = take('${take(compactName, 8)}st2${uniqueSuffix}', 24)
-var serviceBusNamespaceName = take('sb-${baseName}-${uniqueSuffix}', 50)
+var eventHubsNamespaceName = take('evh-${baseName}-${uniqueSuffix}', 50)
+var expensesEventHubName = 'expenses'
 var cosmosAccountName = take('cosmos-${baseName}-${uniqueSuffix}', 44)
 var keyVaultName = take('${take(compactName, 10)}kv${uniqueSuffix}', 24)
 var logAnalyticsWorkspaceName = take('law-${baseName}-${uniqueSuffix}', 63)
@@ -92,8 +93,8 @@ var policyConfigAllRegions = enableDemoPolicyConfigRegion ? concat(policyConfigR
 var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
 var storageTableDataContributorRoleId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
-var serviceBusDataSenderRoleId = '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
-var serviceBusDataReceiverRoleId = '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
+var eventHubsDataSenderRoleId = '2b629674-e913-4c01-ae53-ef4638d8f975'
+var eventHubsDataReceiverRoleId = 'a638d3c7-ab3a-418d-83e6-5f17a39d4fde'
 var cosmosSqlDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
@@ -143,14 +144,18 @@ var storageQueueSettings = [
   }
 ]
 
-var queueBindingSettings = [
+var eventHubBindingSettings = [
   {
-    name: 'ExpensesQueueName'
-    value: serviceBus.outputs.queueName
+    name: 'ExpensesEventHubName'
+    value: eventHubs.outputs.eventHubName
   }
   {
-    name: 'ServiceBusConnection__fullyQualifiedNamespace'
-    value: serviceBus.outputs.fullyQualifiedNamespace
+    name: 'EventHubsConnection__fullyQualifiedNamespace'
+    value: eventHubs.outputs.fullyQualifiedNamespace
+  }
+  {
+    name: 'EventHubsConnection__credential'
+    value: 'managedidentity'
   }
 ]
 
@@ -224,12 +229,12 @@ module secondaryStorage 'modules/storage.bicep' = {
   }
 }
 
-module serviceBus 'modules/service-bus.bicep' = {
-  name: 'service-bus'
+module eventHubs 'modules/event-hubs.bicep' = {
+  name: 'event-hubs'
   params: {
     location: location
-    namespaceName: serviceBusNamespaceName
-    queueName: 'expenses'
+    namespaceName: eventHubsNamespaceName
+    eventHubName: expensesEventHubName
     tags: commonTags
     restrictNetworkAccess: restrictNetworkAccess
   }
@@ -343,7 +348,7 @@ module bffFunction 'modules/function-app.bicep' = {
     tags: union(commonTags, {
       component: 'bff'
     })
-    appSettings: concat(functionHostStorageSettings, applicationInsightsSettings, receiptStorageSettings, storageQueueSettings, queueBindingSettings, [
+    appSettings: concat(functionHostStorageSettings, applicationInsightsSettings, receiptStorageSettings, storageQueueSettings, eventHubBindingSettings, [
       {
         name: 'ExpenseFlow__KeepAliveEnabled'
         value: 'true'
@@ -373,7 +378,15 @@ module workerFunction 'modules/function-app.bicep' = {
     tags: union(commonTags, {
       component: 'worker'
     })
-    appSettings: concat(functionHostStorageSettings, applicationInsightsSettings, receiptStorageSettings, storageQueueSettings, queueBindingSettings, cosmosSettings, [
+    appSettings: concat(functionHostStorageSettings, applicationInsightsSettings, receiptStorageSettings, storageQueueSettings, eventHubBindingSettings, cosmosSettings, [
+      {
+        name: 'ExpensesConsumerGroup'
+        value: eventHubs.outputs.consumerGroupName
+      }
+      {
+        name: 'ExpenseFlow__PoisonQueueName'
+        value: expensePoisonQueue.name
+      }
       {
         name: 'ExpenseFlow__OcrServiceBaseUrl'
         value: 'https://${ocrFunction.outputs.defaultHostName}'
@@ -578,17 +591,17 @@ module secondaryStorageFilePrivateEndpoint 'modules/private-endpoint.bicep' = {
   }
 }
 
-module serviceBusPrivateEndpoint 'modules/private-endpoint.bicep' = {
-  name: 'pe-service-bus'
+module eventHubsPrivateEndpoint 'modules/private-endpoint.bicep' = {
+  name: 'pe-event-hubs'
   params: {
     location: location
-    name: take('pe-${serviceBus.outputs.namespaceName}', 80)
+    name: take('pe-${eventHubs.outputs.namespaceName}', 80)
     subnetId: network.outputs.privateEndpointSubnetId
-    targetResourceId: serviceBus.outputs.id
+    targetResourceId: eventHubs.outputs.id
     groupIds: [
       'namespace'
     ]
-    privateDnsZoneId: network.outputs.serviceBusPrivateDnsZoneId
+    privateDnsZoneId: network.outputs.eventHubsPrivateDnsZoneId
     tags: commonTags
   }
 }
@@ -712,7 +725,7 @@ module healthModel 'modules/health-model.bicep' = {
     ocrPlanResourceId: ocrFunctionPlan.id
     workerPlanResourceId: workerFunctionPlan.id
     keyVaultResourceId: keyVault.outputs.id
-    serviceBusNamespaceResourceId: serviceBus.outputs.id
+    eventHubsNamespaceResourceId: eventHubs.outputs.id
     cosmosAccountResourceId: cosmos.outputs.id
     bffAppRoleName: bffFunction.outputs.name
     workerAppRoleName: workerFunction.outputs.name
@@ -728,8 +741,26 @@ resource secondaryStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' 
   name: secondaryStorageName
 }
 
-resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' existing = {
-  name: serviceBusNamespaceName
+resource storageQueueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' existing = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource expensePoisonQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: storageQueueService
+  name: 'expenses-poison'
+  dependsOn: [
+    storage
+  ]
+}
+
+resource eventHubsNamespace 'Microsoft.EventHub/namespaces@2024-01-01' existing = {
+  name: eventHubsNamespaceName
+}
+
+resource expensesEventHub 'Microsoft.EventHub/namespaces/eventhubs@2024-01-01' existing = {
+  parent: eventHubsNamespace
+  name: expensesEventHubName
 }
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = {
@@ -969,21 +1000,21 @@ resource ocrSecondaryTableRole 'Microsoft.Authorization/roleAssignments@2022-04-
   ]
 }
 
-resource bffServiceBusSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, bffFunctionAppName, serviceBusDataSenderRoleId)
-  scope: serviceBusNamespace
+resource bffEventHubsSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(expensesEventHub.id, bffFunctionAppName, eventHubsDataSenderRoleId)
+  scope: expensesEventHub
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', serviceBusDataSenderRoleId)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', eventHubsDataSenderRoleId)
     principalId: bffFunction.outputs.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
-resource workerServiceBusReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, workerFunctionAppName, serviceBusDataReceiverRoleId)
-  scope: serviceBusNamespace
+resource workerEventHubsReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(expensesEventHub.id, workerFunctionAppName, eventHubsDataReceiverRoleId)
+  scope: expensesEventHub
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', serviceBusDataReceiverRoleId)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', eventHubsDataReceiverRoleId)
     principalId: workerFunction.outputs.principalId
     principalType: 'ServicePrincipal'
   }
@@ -1115,7 +1146,7 @@ resource workerCosmosRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignme
 output bffFunctionHostName string = bffFunction.outputs.defaultHostName
 output workerFunctionHostName string = workerFunction.outputs.defaultHostName
 output ocrFunctionHostName string = ocrFunction.outputs.defaultHostName
-output serviceBusNamespace string = serviceBus.outputs.fullyQualifiedNamespace
+output eventHubsNamespace string = eventHubs.outputs.fullyQualifiedNamespace
 output storageAccountName string = storage.outputs.name
 output cosmosEndpoint string = cosmos.outputs.endpoint
 output logAnalyticsWorkspaceName string = observability.outputs.workspaceName

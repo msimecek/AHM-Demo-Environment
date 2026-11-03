@@ -39,8 +39,8 @@ param workerPlanResourceId string
 @description('Key Vault resource ID.')
 param keyVaultResourceId string
 
-@description('Service Bus namespace resource ID.')
-param serviceBusNamespaceResourceId string
+@description('Event Hubs namespace resource ID.')
+param eventHubsNamespaceResourceId string
 
 @description('Cosmos DB account resource ID.')
 param cosmosAccountResourceId string
@@ -462,6 +462,30 @@ AppRequests
             signalKind: 'LogAnalyticsQuery'
             timeGrain: 'PT30M'
             valueColumnName: 'executions'
+          }
+          {
+            displayName: 'Poison handoffs'
+            evaluationRules: {
+              unhealthyRule: {
+                operator: 'GreaterThan'
+                threshold: 0
+              }
+            }
+            name: 'poison-handoffs'
+            queryText: format('''
+AppTraces
+| where TimeGenerated > ago(10m)
+| where AppRoleName == "{0}"
+| summarize
+    traces=count(),
+    poisonHandoffs=countif(SeverityLevel >= 3 and Message has "was saved to poison queue" and tostring(Properties.QueueName) == "expenses-poison")
+| where traces > 0
+| project poisonHandoffs
+            ''', workerAppRoleName)
+            refreshInterval: 'PT1M'
+            signalKind: 'LogAnalyticsQuery'
+            timeGrain: 'PT10M'
+            valueColumnName: 'poisonHandoffs'
           }
         ]
       }
@@ -953,7 +977,7 @@ resource entityKeyVault 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-
   ]
 }
 
-resource entityServiceBus 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
+resource entityEventHubs 'Microsoft.CloudHealth/healthmodels/entities@2026-09-01-preview' = {
   parent: healthModel
   name: 'ddcb4be3-b81d-4b99-8de9-529ee191671a'
   properties: {
@@ -961,7 +985,7 @@ resource entityServiceBus 'Microsoft.CloudHealth/healthmodels/entities@2026-09-0
       x: -530
       y: 770
     }
-    displayName: 'Service Bus'
+    displayName: 'Event Hubs'
     icon: {
       iconName: 'Resource'
     }
@@ -969,70 +993,74 @@ resource entityServiceBus 'Microsoft.CloudHealth/healthmodels/entities@2026-09-0
     signalGroups: {
       azureResource: {
         authenticationSetting: 'systemassigned'
-        azureResourceId: serviceBusNamespaceResourceId
+        azureResourceId: eventHubsNamespaceResourceId
         signals: [
           {
-            aggregationType: 'Maximum'
-            dataUnit: 'Percent'
-            displayName: 'CPU'
+            aggregationType: 'Total'
+            dataUnit: 'Count'
+            displayName: 'Throttled requests'
             evaluationRules: {
               degradedRule: {
                 operator: 'GreaterThan'
-                threshold: 20
+                threshold: 0
               }
               unhealthyRule: {
                 operator: 'GreaterThan'
-                threshold: 50
+                threshold: 5
               }
             }
-            metricName: 'NamespaceCpuUsage'
-            metricNamespace: 'microsoft.servicebus/namespaces'
-            name: '8648c9a4-f234-46f9-822a-a78ec060d50d'
+            metricName: 'ThrottledRequests'
+            metricNamespace: 'microsoft.eventhub/namespaces'
+            name: 'event-hubs-throttled-requests'
             refreshInterval: 'PT1M'
             signalKind: 'AzureResourceMetric'
             timeGrain: 'PT5M'
           }
           {
-            aggregationType: 'Maximum'
+            aggregationType: 'Total'
             dataUnit: 'Count'
-            displayName: 'Count of active messages in a Queue/Topic.'
+            displayName: 'Server errors'
             evaluationRules: {
               degradedRule: {
                 operator: 'GreaterThan'
-                threshold: 5
+                threshold: 0
               }
               unhealthyRule: {
                 operator: 'GreaterThan'
-                threshold: 10
+                threshold: 5
               }
             }
-            metricName: 'ActiveMessages'
-            metricNamespace: 'microsoft.servicebus/namespaces'
-            name: 'd4a0fa86-217d-41e4-ba52-ead1af082d6a'
+            metricName: 'ServerErrors'
+            metricNamespace: 'microsoft.eventhub/namespaces'
+            name: 'event-hubs-server-errors'
             refreshInterval: 'PT1M'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT1M'
+            timeGrain: 'PT5M'
           }
           {
             aggregationType: 'Total'
             dataUnit: 'Count'
-            displayName: 'Abandoned Messages'
+            displayName: 'User errors'
             evaluationRules: {
-              unhealthyRule: {
+              degradedRule: {
                 operator: 'GreaterThan'
                 threshold: 0
               }
+              unhealthyRule: {
+                operator: 'GreaterThan'
+                threshold: 5
+              }
             }
-            metricName: 'AbandonMessage'
-            metricNamespace: 'microsoft.servicebus/namespaces'
-            name: '30e2e566-04a1-4411-adbe-ac692684799a'
+            metricName: 'UserErrors'
+            metricNamespace: 'microsoft.eventhub/namespaces'
+            name: 'event-hubs-user-errors'
             refreshInterval: 'PT1M'
             signalKind: 'AzureResourceMetric'
-            timeGrain: 'PT1M'
+            timeGrain: 'PT5M'
           }
         ]
         resourceHealth: {
-          enabled: 'Enabled'
+          enabled: 'Disabled'
         }
       }
     }
@@ -1366,11 +1394,11 @@ resource relationshipSubmitExpensesToApiLayer 'Microsoft.CloudHealth/healthmodel
   }
 }
 
-resource relationshipDataLayerToServiceBus 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
+resource relationshipDataLayerToEventHubs 'Microsoft.CloudHealth/healthmodels/relationships@2026-09-01-preview' = {
   parent: healthModel
   name: '7adbe2d7-f53b-4440-8e35-18fbe004e6a1'
   properties: {
-    childEntityName: entityServiceBus.name
+    childEntityName: entityEventHubs.name
     parentEntityName: entityDataLayer.name
   }
 }

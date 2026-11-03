@@ -128,7 +128,7 @@ resource storageFilePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01
   tags: tags
 }
 
-resource serviceBusPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource eventHubsPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: 'privatelink.servicebus.windows.net'
   location: 'global'
   tags: tags
@@ -224,8 +224,8 @@ resource storageFileDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLin
   }
 }
 
-resource serviceBusDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: serviceBusPrivateDnsZone
+resource eventHubsDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: eventHubsPrivateDnsZone
   name: 'vnet-${baseName}'
   location: 'global'
   properties: {
@@ -326,7 +326,7 @@ output storageBlobPrivateDnsZoneId string = storageBlobPrivateDnsZone.id
 output storageQueuePrivateDnsZoneId string = storageQueuePrivateDnsZone.id
 output storageTablePrivateDnsZoneId string = storageTablePrivateDnsZone.id
 output storageFilePrivateDnsZoneId string = storageFilePrivateDnsZone.id
-output serviceBusPrivateDnsZoneId string = serviceBusPrivateDnsZone.id
+output eventHubsPrivateDnsZoneId string = eventHubsPrivateDnsZone.id
 output cosmosPrivateDnsZoneId string = cosmosPrivateDnsZone.id
 output webAppPrivateDnsZoneId string = webAppPrivateDnsZone.id
 output keyVaultPrivateDnsZoneId string = keyVaultPrivateDnsZone.id
