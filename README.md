@@ -25,17 +25,6 @@ See [DESIGN.md](./docs/DESIGN.md) for more details.
 
 To build the same health model by hand during a live demo, use [docs/Manual-Model-Build.md](./docs/Manual-Model-Build.md).
 
-### Messaging configuration
-Event Hubs uses the Standard tier with one throughput unit, two partitions, a dedicated `expense-worker` consumer group, and seven-day event retention. Auto-inflate and Kafka are disabled. Function bindings use managed identity, and a private endpoint provides network access.
-
-The worker processes one event at a time per partition. Native Functions retries allow five processing attempts, ten seconds apart. After five failures, the next invocation saves the original expense message to the private `expenses-poison` Storage queue without an expiry time. Poison messages require manual inspection and recovery; no automatic replay is configured.
-
-The native retry policy remains active until the poison-queue write succeeds. A queue outage therefore pauses the affected partition instead of advancing the checkpoint past an unsaved expense. Retry counts are held in memory and can reset after a host restart. Event processing and poison-queue writes can occur more than once.
-
-The Event Hubs entity uses the native `ThrottledRequests`, `ServerErrors`, and `UserErrors` metrics. Each signal uses a five-minute total: greater than zero is Degraded; greater than five is Unhealthy. The Worker becomes Unhealthy when its error logs show a poison handoff in the last ten minutes. This signal counts recent handoff log events, not messages still in the poison queue. If no Worker traces arrive, the query returns no value instead of a healthy zero. Queue depth, consumer lag, and successful expense completion are not measured by these signals.
-
-For an existing deployment, incremental Bicep deployment does **not** delete the old Premium Service Bus namespace or its private endpoint. If these resources still exist, they continue to incur charges until explicitly removed. Verify Event Hubs processing before removing them; pending Service Bus messages are not copied.
-
 ## How to use
 
 ### Prerequisites
